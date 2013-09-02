@@ -11,7 +11,7 @@ import Prelude
 data Options = Options
     { optionPort       :: PortID
     , optionMaxClients :: Maybe Integer
-    } deriving Show
+    }
 
 opts :: Parser Options
 opts = Options
