@@ -3,6 +3,7 @@ module Melvin.Options (
   options
 ) where
 
+import Data.Ix
 import Data.Word
 import Network
 import Options.Applicative
@@ -40,11 +41,13 @@ maxClientsReader s =
 
 portNumReader :: String -> Either ParseError PortID
 portNumReader s =
-    case reads s :: [(Integer, String)] of
+    case reads s of
         [] -> fail "Parsing port number failed"
-        ((p,_):_) -> if p <= fromIntegral (maxBound :: Word16)
+        ((p,_):_) -> if inRange bounds p
                          then Right $ PortNumber (fromIntegral p)
-                         else fail "Port number too high."
+                         else fail "Port number invalid."
+    where bounds :: (Integer, Integer)
+          bounds = (fromIntegral (minBound :: Word16), fromIntegral (maxBound :: Word16))
 
 options :: IO Options
 options = execParser $ info (helper <*> opts)

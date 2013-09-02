@@ -2,6 +2,8 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Melvin.Logger (
+  startLogger,
+
   logInfo,
   logWarning,
   logError,
@@ -11,16 +13,25 @@ module Melvin.Logger (
   logErrorIO
 ) where
 
+import           Control.Concurrent
+import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Proxy
 import           Control.Proxy.Safe
 import           Data.Maybe
-import           Data.Text              (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import           Data.Time
-import           Prelude hiding         (log)
+import           Melvin.Prelude hiding  (log)
 import           System.Locale
+import           System.IO.Unsafe
+
+logChan :: Chan Text
+logChan = unsafePerformIO newChan
+{-# NOINLINE logChan #-}
+
+startLogger :: IO ()
+startLogger = void $ forkIO $ forever $ readChan logChan >>= T.putStrLn
 
 data Level = Info | Warning | Error
 
@@ -51,6 +62,6 @@ logWith f l s = do
             Error -> "\27[31mERR\27[0m"
         fmt = "%F %X " ++ prefix ++ " "
         time = formatTime defaultTimeLocale fmt t
-        clean = fromMaybe s $ T.stripSuffix "\n" s >>= T.stripSuffix "\r"
-    f $ putStr time
-    f $ T.putStrLn clean
+        clean = T.stripEnd $ fromMaybe s $ T.stripSuffix "\0" s
+        str = pack time <> clean
+    f $ writeChan logChan str

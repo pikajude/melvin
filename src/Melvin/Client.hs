@@ -34,7 +34,7 @@ packetStream index hndl () = bracket id
 responder :: Proxy p
           => () -> Consumer (ExceptionP (StateP ClientSettings p)) Packet SafeIO ()
 responder () = fix $ \f -> do
-    p@Packet { pktPrefix = prefix
+    p@Packet { pktPrefix = _prefix
              , pktCommand = command
              , pktArguments = args } <- request ()
     logInfo (show p)
