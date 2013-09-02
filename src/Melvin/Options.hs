@@ -33,7 +33,7 @@ opts = Options
 maxClientsReader :: String -> Either ParseError Integer
 maxClientsReader s =
     case reads s of
-        [] -> Left $ ErrorMsg (s ++ " isn't a number")
+        [] -> fail $ s ++ " isn't a number"
         ((c,_):_) -> if c < 1
                          then fail "Max clients can't be less than 1."
                          else Right c
