@@ -22,6 +22,9 @@ data MelvinException =
       | ServerNoParse String Text
         -- | Server disconnected unexpectedly.
       | ServerDisconnect
+        -- | Authentication with dAmn failed, despite the fact that dAmn
+        -- returned this authtoken. Weird.
+      | AuthenticationFailed
       deriving (Show, Typeable)
 
 instance Exception MelvinException

@@ -23,6 +23,7 @@ executable melvin
                      , async >= 2.0
                      , attoparsec
                      , bytestring
+                     , containers
                      , cprng-aes
                      , damnpacket
                      , HTTP

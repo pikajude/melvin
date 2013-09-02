@@ -90,7 +90,7 @@ authFailure h = do
 authSuccess :: Handle -> AuthState ()
 authSuccess h = do
     uname <- use $ acUsername . _Just
-    write h $ rplNotify uname "Successfully authenticated."
+    write h $ rplNotify uname "Got a token."
 
 write :: MonadIO m => Handle -> Text -> m ()
 write h s = do
