@@ -95,7 +95,7 @@ res_dAmnServer _ = do
     logInfo $ formatS "Client #{} handshook successfully." [num]
     u <- liftP $ gets (view username)
     tok <- liftP $ gets (view token)
-    writeServer $ formatS "login {}\npk={}\n\0" [u, tok]
+    writeServer $ formatS "login {}\npk={}\n" [u, tok]
 
 res_login :: Proxy p => Callback p
 res_login Packet { pktArgs = args } = do
