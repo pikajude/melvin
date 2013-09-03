@@ -71,9 +71,9 @@ responder :: Proxy p
           => () -> Consumer (ExceptionP (StateP ClientSettings p)) Packet SafeIO ()
 responder () = fix $ \f -> do
     p@Packet { pktCommand = command
-             , pktParameter = param
+             , pktParameter = _param
              , pktArgs = args
-             , pktBody = body } <- request ()
+             , pktBody = _body } <- request ()
     num <- liftP $ gets clientNumber
     uname <- liftP $ gets (view username)
     case command of

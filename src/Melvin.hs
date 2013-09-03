@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
-#if defined(__GLASGOW_HASKELL) && __GLASGOW_HASKELL <= 704
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 704
 {-# LANGUAGE DoRec #-}
 #else
 {-# LANGUAGE RecursiveDo #-}

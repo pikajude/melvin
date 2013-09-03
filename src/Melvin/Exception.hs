@@ -5,12 +5,10 @@ module Melvin.Exception (
   isRetryable
 ) where
 
-import           Control.Exception
-import           Data.Text             (Text)
-import           Data.Typeable
-import           Melvin.Client.Packet  (Packet)
-import           Melvin.Prelude
-import qualified Text.Damn.Packet as D
+import Control.Exception
+import Data.Typeable
+import Melvin.Client.Packet (Packet)
+import Melvin.Prelude
 
 data MelvinException =
         -- | Client packets that are syntactically valid, but are lacking
