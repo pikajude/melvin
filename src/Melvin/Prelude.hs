@@ -6,11 +6,8 @@
 -- everything a Melvin module should need.
 module Melvin.Prelude (
   -- base's Prelude
-  module Prelude,
-  module System.IO,
-  module Data.Text.Format,
+  module X,
   formatS,
-  module Data.Monoid,
 
   -- retconned Prelude functions
   (++),
@@ -36,15 +33,15 @@ import           Control.Monad.State
 import           Control.Proxy
 import           Control.Proxy.Safe
 import           Control.Proxy.Trans.State
-import           Data.Monoid
+import           Data.Monoid as X
 import           Data.Text                 (Text, pack)
-import           Data.Text.Format
+import           Data.Text.Format as X
 import           Data.Text.Format.Params   (Params)
 import qualified Data.Text.IO as IO
 import           Data.Text.Lazy            (toStrict)
-import           Prelude hiding            ((++), putStrLn, print, show)
+import           Prelude as X hiding       ((++), putStrLn, print, show)
 import qualified Prelude as P
-import           System.IO                 (Handle, hClose, hFlush, hIsClosed, hIsEOF)
+import           System.IO as X            (Handle, hClose, hFlush, hIsClosed, hIsEOF)
 
 -- | Simple utility functions.
 show :: Show a => a -> Text
