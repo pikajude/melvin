@@ -100,11 +100,11 @@ res_dAmnServer _ = do
 res_login :: Proxy p => Callback p
 res_login Packet { pktArgs = args } = do
     uname <- liftP $ gets (view username)
-    case args ^? ix "e" of
-        Just "ok" -> do
+    case args ^. ix "e" of
+        "ok" -> do
             writeClient $ rplNotify uname "Authenticated successfully."
             liftP $ modify (loggedIn .~ True)
-        ~(Just x) -> do
+        x -> do
             writeClient $ rplNotify uname "Authentication failed!"
             throw $ AuthenticationFailed x
 
