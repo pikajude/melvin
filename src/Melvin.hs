@@ -15,7 +15,6 @@ import Control.Concurrent.Async
 import Control.Lens hiding      (index, set)
 import Control.Monad
 import Control.Monad.Fix
-import Control.Proxy.Concurrent
 import Control.Proxy
 import Melvin.Client as Client
 import Melvin.Damn as Damn
@@ -26,6 +25,7 @@ import Melvin.Prelude
 import Melvin.Options
 import Melvin.Types
 import Network
+import System.Mem
 
 doAMelvin :: Options -> IO ()
 doAMelvin Options { optionPort = p

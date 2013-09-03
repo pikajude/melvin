@@ -32,7 +32,6 @@ executable melvin
                      , network
                      , old-locale
                      , optparse-applicative
-                     , pipes-concurrency
                      , pipes-safe
                      , pipes
                      , text
