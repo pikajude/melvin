@@ -35,7 +35,6 @@ executable melvin
                      , pipes-concurrency
                      , pipes-safe
                      , pipes
-                     , template-haskell
                      , text
                      , text-format
                      , time
