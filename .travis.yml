@@ -4,5 +4,5 @@ before_install:
   - travis/cabal-apt-install $mode
 
 install:
-  - cabal configure -ferror $mode
+  - cabal configure -ferror $mode --constraint="template-haskell == 2.7.0.0"
   - cabal build
