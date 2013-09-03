@@ -1,5 +1,10 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
+#if defined(__GLASGOW_HASKELL) && __GLASGOW_HASKELL <= 704
 {-# LANGUAGE DoRec #-}
+#else
+{-# LANGUAGE RecursiveDo #-}
+#endif
 
 module Melvin (
   doAMelvin
