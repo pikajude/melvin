@@ -68,4 +68,3 @@ res_quit _ = do
     logInfo $ formatS "Client #{} quit cleanly." [num]
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}
-{-# ANN module ("HLint: ignore Redundant bracket" :: String) #-}
