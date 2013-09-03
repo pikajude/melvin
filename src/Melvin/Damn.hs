@@ -5,7 +5,7 @@ module Melvin.Damn (
 
 import           Control.Arrow
 import           Control.Concurrent
-import           Control.Exception           (throwIO)
+import           Control.Exception           (fromException, throwIO)
 import           Control.Lens hiding         (index)
 import           Control.Monad
 import           Control.Monad.Fix
@@ -37,6 +37,9 @@ hGetTillNull h = do
 
 handler :: SomeException
         -> ClientP a' a b' b SafeIO ()
+handler ex | Just (ClientSocketErr e) <- fromException ex = do
+    logWarning $ formatS "Server thread hit an exception, but client disconnected ({}), so nothing to do." [show e]
+    throw ex
 handler ex = do
     uname <- liftP $ gets (view username)
     writeClient $ rplNotify uname $ formatS "Error when communicating with dAmn: {}" [show ex]
@@ -47,14 +50,12 @@ handler ex = do
             killClient
     throw ex
 
-packetStream :: Integer -> MVar Handle -> () -> Producer ClientP Packet SafeIO ()
-packetStream index mv () = bracket id
+packetStream :: MVar Handle -> () -> Producer ClientP Packet SafeIO ()
+packetStream mv () = bracket id
     (do hndl <- readMVar mv
         auth hndl
         return hndl)
-    (\h -> do
-        logInfoIO $ formatS "Client #{} disconnected from dAmn." [show index]
-        hClose h)
+    hClose
     (\h -> handle handler $ fix $ \f -> do
         isEOF <- tryIO $ hIsEOF h
         isClosed <- tryIO $ hIsClosed h
@@ -68,7 +69,7 @@ packetStream index mv () = bracket id
     where cleanup m = fromMaybe m $ T.stripSuffix "\n" m
 
 responder :: () -> Consumer ClientP Packet SafeIO ()
-responder () = fix $ \f -> do
+responder () = handle handler $ fix $ \f -> do
     p <- request ()
     case M.lookup (pktCommand p) responses of
         Nothing -> logInfo $ formatS "Unhandled packet from damn: {}" [show p]

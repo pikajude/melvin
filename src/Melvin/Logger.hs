@@ -24,6 +24,7 @@ import qualified Data.Text.IO as T
 import           Data.Time
 import           Melvin.Prelude hiding  (log)
 import           System.Locale
+import           System.IO
 import           System.IO.Unsafe
 
 logChan :: Chan Text
@@ -31,7 +32,9 @@ logChan = unsafePerformIO newChan
 {-# NOINLINE logChan #-}
 
 startLogger :: IO ()
-startLogger = void $ forkIO $ forever $ readChan logChan >>= T.putStrLn
+startLogger = do
+    hSetBuffering stdout LineBuffering
+    void $ forkIO $ forever $ readChan logChan >>= T.putStrLn
 
 data Level = Info | Warning | Error
 

@@ -56,7 +56,7 @@ runClientPair index (h, host, _) = do
             -- what happened on dAmn?
             rec client <- async $ do
                     putMVar (set ^. clientThreadId) client
-                    m <- runMelvin set $ Client.packetStream index h >-> Client.responder
+                    m <- runMelvin set $ Client.packetStream h >-> Client.responder
                     performGC
                     return m
 
@@ -70,52 +70,43 @@ runClientPair index (h, host, _) = do
                  fix (\f settings -> do
                      insertDamn settings
                      result <- runMelvin settings $
-                         Damn.packetStream index (set ^. serverMVar) >-> Damn.responder
+                         Damn.packetStream (set ^. serverMVar) >-> Damn.responder
                      performGC
                      case result of
                          r@Right{..} -> return r
                          Left err -> do
-                            logErrorIO $ formatS "{}" [show err]
                             if isRetryable err
                                 then f (settings & retryWait +~ 5)
                                 else return $ Left err) set
 
             result <- liftM2 (,) (wait client) (wait server)
-            killThread $ set ^. serverWriterThreadId
-            killThread $ set ^. clientWriterThreadId
             case result of
-                (Right{..}, Right{..}) -> logInfoIO $ "Client #" ++ show index ++ " exited normally"
+                (Right{..}, Right{..}) -> logInfoIO $ formatS "Client #{} exited normally" [index]
                 (Left m, _) -> logErrorIO $ "Client #" ++ show index
-                                         ++ " exited unexpectedly: " ++ show m
+                                         ++ " encountered an error: " ++ show m
                 (_, Left m) -> logErrorIO $ "Client #" ++ show index
-                                         ++ "'s server disconnected unexpectedly: " ++ show m
+                                         ++ "'s server encountered an error: " ++ show m
 
 buildClientSettings :: Integer -> Handle -> Text -> Text -> IO ClientSettings
 buildClientSettings i h u t = do
-    sc <- newChan
-    cc <- newChan
+    sc <- newMVar ()
+    cc <- newMVar ()
     mv1 <- newEmptyMVar
     mv2 <- newEmptyMVar
     mv3 <- newEmptyMVar
-    sid <- forkIO $ forever $ do
-        val <- readChan sc
-        servar <- readMVar mv1
-        hPutStr servar val
-    cid <- forkIO $ forever $ readChan cc >>= hPutStr h
     return ClientSettings
-        { clientNumber          = i
-        , _serverChan           = sc
-        , _clientChan           = cc
-        , _username             = u
-        , _token                = t
-        , _serverWriterThreadId = sid
-        , _clientWriterThreadId = cid
-        , _serverMVar           = mv1
-        , _serverThreadId       = mv2
-        , _clientThreadId       = mv3
-        , _retryWait            = 5
-        , _loggedIn             = False
-        , _joinList             = mempty
+        { clientNumber     = i
+        , _clientHandle    = h
+        , _serverWriteLock = sc
+        , _clientWriteLock = cc
+        , _username        = u
+        , _token           = t
+        , _serverMVar      = mv1
+        , _serverThreadId  = mv2
+        , _clientThreadId  = mv3
+        , _retryWait       = 5
+        , _loggedIn        = False
+        , _joinList        = mempty
         }
 
 insertDamn :: ClientSettings -> IO ()

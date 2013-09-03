@@ -17,7 +17,11 @@ data MelvinException =
         ClientNoParse Text
         -- | Server sent something that doesn't parse.
       | ServerNoParse String Text
+        -- | Client disconnected unexpectedly.
+      | ClientSocketErr IOException
         -- | Server disconnected unexpectedly.
+      | ServerSocketErr IOException
+        -- | Server sent an unexpected "disconnect" packet.
       | ServerDisconnect Text
         -- | Authentication with dAmn failed, despite the fact that dAmn
         -- returned this authtoken. Weird.
@@ -28,6 +32,8 @@ instance Exception MelvinException
 
 instance Show MelvinException where
     show (AuthenticationFailed e) = "couldn't login: " ++ unpack e
+    show (ClientSocketErr e) = "lost connection to client: " ++ Prelude.show e
+    show (ServerSocketErr e) = "lost connection to server: " ++ Prelude.show e
     show (ServerDisconnect e) = "lost connection to server: " ++ unpack e
     show ServerNoParse{..} = "received a bad packet from the server"
     show ClientNoParse{..} = "received a bad packet from the client"
