@@ -15,16 +15,12 @@ import           Melvin.Logger
 import           Melvin.Prelude
 import           Melvin.Types
 
-handler :: Proxy p
-        => SomeException
-        -> ExceptionP (StateP ClientSettings p) a' a b' b SafeIO ()
+handler :: SomeException -> ClientP a' a b' b SafeIO ()
 handler ex = do
     killServer
     throw ex
 
-packetStream :: Proxy p
-             => Integer -> Handle -> ()
-             -> Producer (ExceptionP (StateP ClientSettings p)) Packet SafeIO ()
+packetStream :: Integer -> Handle -> () -> Producer ClientP Packet SafeIO ()
 packetStream index hndl () = bracket id
     (return hndl)
     (\h -> do
@@ -39,8 +35,7 @@ packetStream index hndl () = bracket id
             respond $ parse line
             f)
 
-responder :: Proxy p
-          => () -> Consumer (ExceptionP (StateP ClientSettings p)) Packet SafeIO ()
+responder :: () -> Consumer ClientP Packet SafeIO ()
 responder () = fix $ \f -> do
     p <- request ()
     case M.lookup (pktCommand p) responses of
@@ -50,19 +45,19 @@ responder () = fix $ \f -> do
 
 
 -- | Big ol' list of callbacks!
-type Callback p = Packet -> Consumer (ExceptionP (StateP ClientSettings p)) Packet SafeIO ()
+type Callback = Packet -> Consumer ClientP Packet SafeIO ()
 
-responses :: Proxy p => M.Map Text (Callback p)
+responses :: M.Map Text Callback
 responses = M.fromList [ ("PING", res_ping)
                        , ("QUIT", res_quit)
                        , ("USER", const (return ()))
                        ]
 
-res_ping :: Proxy p => Callback p
+res_ping :: Callback
 res_ping Packet { pktArguments = a } =
         writeClient $ Packet Nothing "PONG" a
 
-res_quit :: Proxy p => Callback p
+res_quit :: Callback
 res_quit _ = do
     num <- liftP $ gets clientNumber
     logInfo $ formatS "Client #{} quit cleanly." [num]

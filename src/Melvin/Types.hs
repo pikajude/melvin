@@ -19,7 +19,9 @@ module Melvin.Types (
   writeClient,
   writeServer,
   killClient,
-  killServer
+  killServer,
+
+  ClientP
 ) where
 
 import Control.Concurrent
@@ -33,6 +35,8 @@ import Data.Text
 import Melvin.Client.Packet
 import Melvin.Logger
 import Melvin.Prelude
+
+type ClientP = ExceptionP (StateP ClientSettings ProxyFast)
 
 data Chatroom =
           Chatroom Text
@@ -57,20 +61,20 @@ data ClientSettings = ClientSettings
 
 makeLenses ''ClientSettings
 
-writeClient :: Proxy p => Packet -> ExceptionP (StateP ClientSettings p) a' a b' b SafeIO ()
+writeClient :: Packet -> ClientP a' a b' b SafeIO ()
 writeClient text = do
     let r = render text
     logInfo r
     cc <- liftP $ gets (view clientChan)
     tryIO $ writeChan cc r
 
-writeServer :: Proxy p => Text -> ExceptionP (StateP ClientSettings p) a' a b' b SafeIO ()
+writeServer :: Text -> ClientP a' a b' b SafeIO ()
 writeServer text = do
     logInfo $ show text
     sc <- liftP $ gets (view serverChan)
     tryIO $ writeChan sc (text ++ "\0")
 
-killClient :: Proxy p => ExceptionP (StateP ClientSettings p) a' a b' b SafeIO ()
+killClient :: ClientP a' a b' b SafeIO ()
 killClient = do
     ct <- liftP $ gets (view clientThreadId)
     tid <- tryIO $ tryTakeMVar ct
@@ -78,7 +82,7 @@ killClient = do
         Nothing -> logWarning "Client thread is already dead."
         Just t -> tryIO $ cancel t
 
-killServer :: Proxy p => ExceptionP (StateP ClientSettings p) a' a b' b SafeIO ()
+killServer :: ClientP a' a b' b SafeIO ()
 killServer = do
     ct <- liftP $ gets (view serverThreadId)
     tid <- tryIO $ tryTakeMVar ct

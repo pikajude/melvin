@@ -59,7 +59,5 @@ formatS a b = toStrict $ format a b
 
 -- | Dealing with the underlying Proxy monad upon which Melvin clients are
 -- based.
-runMelvin :: s
-          -> (() -> ExceptionP (StateP s ProxyFast) a' () () b SafeIO r)
-          -> IO (Either SomeException r)
+runMelvin :: s -> (() -> ExceptionP (StateP s ProxyFast) a' () () b SafeIO r) -> IO (Either SomeException r)
 runMelvin st = trySafeIO . runProxy . evalStateK st . runEitherK

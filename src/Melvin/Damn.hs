@@ -35,9 +35,8 @@ hGetTillNull h = do
                 else fmap (T.cons ch) $ hGetTillNull h
         else throwIO $ mkIOError eofErrorType "read timeout" (Just h) Nothing
 
-handler :: Proxy p
-        => SomeException
-        -> ExceptionP (StateP ClientSettings p) a' a b' b SafeIO ()
+handler :: SomeException
+        -> ClientP a' a b' b SafeIO ()
 handler ex = do
     uname <- liftP $ gets (view username)
     writeClient $ rplNotify uname $ formatS "Error when communicating with dAmn: {}" [show ex]
@@ -48,15 +47,13 @@ handler ex = do
             killClient
     throw ex
 
-packetStream :: Proxy p
-             => Integer -> MVar Handle -> ()
-             -> Producer (ExceptionP (StateP ClientSettings p)) Packet SafeIO ()
+packetStream :: Integer -> MVar Handle -> () -> Producer ClientP Packet SafeIO ()
 packetStream index mv () = bracket id
     (do hndl <- readMVar mv
         auth hndl
         return hndl)
     (\h -> do
-        logInfoIO $ "Client #" ++ show index ++ " disconnected from dAmn."
+        logInfoIO $ formatS "Client #{} disconnected from dAmn." [show index]
         hClose h)
     (\h -> handle handler $ fix $ \f -> do
         isEOF <- tryIO $ hIsEOF h
@@ -70,8 +67,7 @@ packetStream index mv () = bracket id
                 f)
     where cleanup m = fromMaybe m $ T.stripSuffix "\n" m
 
-responder :: Proxy p
-          => () -> Consumer (ExceptionP (StateP ClientSettings p)) Packet SafeIO ()
+responder :: () -> Consumer ClientP Packet SafeIO ()
 responder () = fix $ \f -> do
     p <- request ()
     case M.lookup (pktCommand p) responses of
@@ -84,20 +80,20 @@ auth h = hprint h "dAmnClient 0.3\nagent=melvin 0.1\n\0" ()
 
 
 -- | Big ol' list of callbacks!
-type Callback p = Packet -> Consumer (ExceptionP (StateP ClientSettings p)) Packet SafeIO ()
+type Callback = Packet -> Consumer ClientP Packet SafeIO ()
 
-responses :: Proxy p => M.Map Text (Callback p)
+responses :: M.Map Text Callback
 responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        , ("login", res_login)
                        ]
 
-res_dAmnServer :: Proxy p => Callback p
+res_dAmnServer :: Callback
 res_dAmnServer _ = do
     (num, (u, tok)) <- liftP . gets $ clientNumber &&& view username &&& view token
     logInfo $ formatS "Client #{} handshook successfully." [num]
     writeServer $ formatS "login {}\npk={}\n" [u, tok]
 
-res_login :: Proxy p => Callback p
+res_login :: Callback
 res_login Packet { pktArgs = args } = do
     uname <- liftP $ gets (view username)
     case args ^. ix "e" of

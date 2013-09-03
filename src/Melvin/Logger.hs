@@ -35,9 +35,7 @@ startLogger = void $ forkIO $ forever $ readChan logChan >>= T.putStrLn
 
 data Level = Info | Warning | Error
 
-logInfo, logWarning, logError :: Proxy p
-                              => Text
-                              -> ExceptionP p a' a b' b SafeIO ()
+logInfo, logWarning, logError :: Proxy p => Text -> ExceptionP p a' a b' b SafeIO ()
 logInfo = log Info
 logWarning = log Warning
 logError = log Error
