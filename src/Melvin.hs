@@ -12,7 +12,6 @@ module Melvin (
 
 import Control.Concurrent
 import Control.Concurrent.Async
-import Control.Lens hiding      (index, set)
 import Control.Monad
 import Control.Monad.Fix
 import Control.Proxy
@@ -21,7 +20,7 @@ import Melvin.Damn as Damn
 import Melvin.Client.Auth
 import Melvin.Exception
 import Melvin.Logger
-import Melvin.Prelude
+import Melvin.Prelude hiding    (index, set)
 import Melvin.Options
 import Melvin.Types
 import Network
@@ -94,6 +93,10 @@ buildClientSettings i h u t = do
     mv1 <- newEmptyMVar
     mv2 <- newEmptyMVar
     mv3 <- newEmptyMVar
+    csm <- newMVar ClientState
+             { _loggedIn = False
+             , _joinList = mempty
+             }
     return ClientSettings
         { clientNumber     = i
         , _clientHandle    = h
@@ -105,8 +108,7 @@ buildClientSettings i h u t = do
         , _serverThreadId  = mv2
         , _clientThreadId  = mv3
         , _retryWait       = 5
-        , _loggedIn        = False
-        , _joinList        = mempty
+        , _clientState     = csm
         }
 
 insertDamn :: ClientSettings -> IO ()

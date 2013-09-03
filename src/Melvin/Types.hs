@@ -12,13 +12,20 @@ module Melvin.Types (
   clientThreadId,
   serverThreadId,
   retryWait,
-  loggedIn,
-  joinList,
 
   writeClient,
   writeServer,
   killClient,
   killServer,
+
+  ClientState(..),
+  loggedIn,
+  joinList,
+
+  modifyState,
+  getState,
+  getsState,
+  putState,
 
   ClientP
 ) where
@@ -27,7 +34,6 @@ import           Control.Arrow
 import           Control.Concurrent
 import           Control.Concurrent.Async
 import qualified Control.Exception as E
-import           Control.Lens
 import           Control.Proxy
 import           Control.Proxy.Safe
 import           Control.Proxy.Trans.State
@@ -38,12 +44,17 @@ import           Melvin.Exception
 import           Melvin.Logger
 import           Melvin.Prelude
 
-type ClientP = ExceptionP (StateP ClientSettings ProxyFast)
-
 data Chatroom =
           Chatroom Text
         | PrivateChat Text
         deriving (Eq, Ord)
+
+data ClientState = ClientState
+        { _loggedIn :: Bool
+        , _joinList :: Set Chatroom
+        }
+
+makeLenses ''ClientState
 
 data ClientSettings = ClientSettings
         { clientNumber          :: Integer
@@ -56,11 +67,12 @@ data ClientSettings = ClientSettings
         , _clientThreadId       :: MVar (Async (Either SomeException ()))
         , _serverThreadId       :: MVar (Async (Either SomeException ()))
         , _retryWait            :: Integer
-        , _loggedIn             :: Bool
-        , _joinList             :: Set Chatroom
+        , _clientState          :: MVar ClientState
         }
 
 makeLenses ''ClientSettings
+
+type ClientP = ExceptionP (StateP ClientSettings ProxyFast)
 
 writeClient :: Packet -> ClientP a' a b' b SafeIO ()
 writeClient text = do
@@ -100,3 +112,25 @@ killServer = do
     case tid of
         Nothing -> logWarning "Server thread is already dead."
         Just t -> tryIO $ cancel t
+
+modifyState :: (ClientState -> ClientState) -> ClientP a' a b' b SafeIO ()
+modifyState f = do
+    cs <- liftP $ gets (view clientState)
+    tryIO $ modifyMVar_ cs (return . f)
+
+getState :: ClientP a' a b' b SafeIO ClientState
+getState = do
+    cs <- liftP $ gets (view clientState)
+    tryIO $ readMVar cs
+
+getsState :: (ClientState -> a) -> ClientP a' a b' b SafeIO a
+getsState f = do
+    cs <- liftP $ gets (view clientState)
+    st <- tryIO $ readMVar cs
+    return $ f st
+
+putState :: ClientState -> ClientP a' a b' b SafeIO ()
+putState v = do
+    cs <- liftP $ gets (view clientState)
+    _ <- tryIO $ tryTakeMVar cs
+    tryIO $ putMVar cs v

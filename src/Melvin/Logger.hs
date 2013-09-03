@@ -22,7 +22,7 @@ import           Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import           Data.Time
-import           Melvin.Prelude hiding  (log)
+import           Melvin.Prelude hiding  (Level, log)
 import           System.Locale
 import           System.IO
 import           System.IO.Unsafe

@@ -6,7 +6,6 @@ module Melvin.Damn (
 import           Control.Arrow
 import           Control.Concurrent
 import           Control.Exception           (fromException, throwIO)
-import           Control.Lens hiding         (index)
 import           Control.Monad
 import           Control.Monad.Fix
 import           Control.Proxy
@@ -103,7 +102,7 @@ res_login Packet { pktArgs = args } = do
     case args ^. ix "e" of
         "ok" -> do
             writeClient $ rplNotify uname "Authenticated successfully."
-            liftP $ modify (loggedIn .~ True)
+            modifyState (loggedIn .~ True)
         x -> do
             writeClient $ rplNotify uname "Authentication failed!"
             throw $ AuthenticationFailed x

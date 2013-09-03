@@ -41,35 +41,44 @@ responder () = handle handler $ fix $ \f -> do
         Nothing -> do
             logInfo $ formatS "Unhandled packet from client: {}" [show p]
             return False
-        Just callback -> callback p
+        Just callback -> do
+            st <- liftP get
+            callback p st
     when continue f
 
 
 -- | Big ol' list of callbacks!
-type Callback = Packet -> Consumer ClientP Packet SafeIO Bool
+type Callback = Packet -> ClientSettings -> Consumer ClientP Packet SafeIO Bool
 
 responses :: M.Map Text Callback
 responses = M.fromList [ ("PING", res_ping)
                        , ("QUIT", res_quit)
-                       , ("USER", const (return True))
+                       , ("USER", (\_ _ -> return True))
                        , ("MODE", res_mode)
+                       , ("JOIN", res_join)
                        ]
 
 res_ping :: Callback
-res_ping Packet { pktArguments = a } = do
+res_ping Packet { pktArguments = a } _ = do
     writeClient $ Packet Nothing "PONG" a
     return True
 
 res_quit :: Callback
-res_quit _ = do
-    num <- liftP $ gets clientNumber
-    logInfo $ formatS "Client #{} quit cleanly." [num]
+res_quit _ st = do
+    logInfo $ formatS "Client #{} quit cleanly." [clientNumber st]
     writeServer "disconnect\n"
     return False
 
 res_mode :: Callback
-res_mode p = do
+res_mode p _ = do
     logInfo $ formatS "Received mode command, should handle: {}" [show p]
+    return True
+
+res_join :: Callback
+res_join Packet { pktArguments = a } st = do
+    case a of
+        [] -> writeClient $ errNeedMoreParams (st ^. username)
+        _rooms -> return ()
     return True
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}

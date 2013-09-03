@@ -7,7 +7,6 @@ module Melvin.Client.Auth (
 ) where
 
 import           Control.Exception
-import           Control.Lens
 import           Control.Monad.State
 import           Data.Maybe
 import qualified Data.Text as T
