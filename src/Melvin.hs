@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE DoRec #-}
 
 module Melvin (
   doAMelvin
