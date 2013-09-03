@@ -3,6 +3,7 @@ module Melvin.Damn (
   responder
 ) where
 
+import           Control.Arrow
 import           Control.Concurrent
 import           Control.Exception           (throwIO)
 import           Control.Lens hiding         (index)
@@ -38,11 +39,12 @@ handler :: Proxy p
         => SomeException
         -> ExceptionP (StateP ClientSettings p) a' a b' b SafeIO ()
 handler ex = do
-    writeClient $ rplNotify "unknown" $ formatS "Error when communicating with dAmn: {}" [show ex]
+    uname <- liftP $ gets (view username)
+    writeClient $ rplNotify uname $ formatS "Error when communicating with dAmn: {}" [show ex]
     if isRetryable ex
-        then writeClient $ rplNotify "unknown" "Trying to reconnect..."
+        then writeClient $ rplNotify uname "Trying to reconnect..."
         else do
-            writeClient $ rplNotify "unknown" "Unrecoverable error. Disconnecting..."
+            writeClient $ rplNotify uname "Unrecoverable error. Disconnecting..."
             killClient
     throw ex
 
@@ -91,21 +93,19 @@ responses = M.fromList [ ("dAmnServer", res_dAmnServer)
 
 res_dAmnServer :: Proxy p => Callback p
 res_dAmnServer _ = do
-    num <- liftP $ gets clientNumber
+    (num, (u, tok)) <- liftP . gets $ clientNumber &&& view username &&& view token
     logInfo $ formatS "Client #{} handshook successfully." [num]
-    u <- liftP $ gets (view username)
-    tok <- liftP $ gets (view token)
     writeServer $ formatS "login {}\npk={}\n" [u, tok]
 
 res_login :: Proxy p => Callback p
 res_login Packet { pktArgs = args } = do
     uname <- liftP $ gets (view username)
-    if args ^?! ix "e" == "ok"
-        then do
+    case args ^? ix "e" of
+        Just "ok" -> do
             writeClient $ rplNotify uname "Authenticated successfully."
             liftP $ modify (loggedIn .~ True)
-        else do
+        ~(Just x) -> do
             writeClient $ rplNotify uname "Authentication failed!"
-            throw AuthenticationFailed
+            throw $ AuthenticationFailed x
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}
