@@ -18,7 +18,7 @@ data MelvinException =
         -- | Server sent something that doesn't parse.
       | ServerNoParse String Text
         -- | Server disconnected unexpectedly.
-      | ServerDisconnect
+      | ServerDisconnect Text
         -- | Authentication with dAmn failed, despite the fact that dAmn
         -- returned this authtoken. Weird.
       | AuthenticationFailed Text
@@ -28,10 +28,10 @@ instance Exception MelvinException
 
 instance Show MelvinException where
     show (AuthenticationFailed e) = "couldn't login: " ++ unpack e
-    show ServerDisconnect = "lost connection to server"
+    show (ServerDisconnect e) = "lost connection to server: " ++ unpack e
     show ServerNoParse{..} = "received a bad packet from the server"
     show ClientNoParse{..} = "received a bad packet from the client"
 
 isRetryable :: SomeException -> Bool
-isRetryable e | Just ServerDisconnect <- fromException e = True
+-- isRetryable e | Just (ServerDisconnect _) <- fromException e = True
 isRetryable _ = False

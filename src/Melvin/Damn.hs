@@ -58,7 +58,7 @@ packetStream index mv () = bracket id
     (\h -> handle handler $ fix $ \f -> do
         isEOF <- tryIO $ hIsEOF h
         isClosed <- tryIO $ hIsClosed h
-        when (isEOF || isClosed) $ throw ServerDisconnect
+        when (isEOF || isClosed) $ throw (ServerDisconnect "socket closed")
         line <- tryIO $ hGetTillNull h
         case parse $ cleanup line of
             Left err -> throw $ ServerNoParse err line
@@ -73,7 +73,10 @@ responder () = fix $ \f -> do
     case M.lookup (pktCommand p) responses of
         Nothing -> logInfo $ formatS "Unhandled packet from damn: {}" [show p]
         Just callback -> callback p
-    unless (pktCommand p == "disconnect") f
+    if pktCommand p == "disconnect"
+        then let arg = pktArgs p ^. ix "e"
+              in when (arg /= "ok") $ throw (ServerDisconnect arg)
+        else f
 
 auth :: Handle -> IO ()
 auth h = hprint h "dAmnClient 0.3\nagent=melvin 0.1\n\0" ()

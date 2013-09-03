@@ -41,7 +41,9 @@ responder () = fix $ \f -> do
     case M.lookup (pktCommand p) responses of
         Nothing -> logInfo $ formatS "Unhandled packet from client: {}" [show p]
         Just callback -> callback p
-    unless (pktCommand p == "QUIT") f
+    if pktCommand p == "QUIT"
+        then writeServer "disconnect\n"
+        else f
 
 
 -- | Big ol' list of callbacks!
