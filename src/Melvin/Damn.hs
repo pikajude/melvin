@@ -72,7 +72,9 @@ responder () = handle handler $ fix $ \f -> do
     p <- request ()
     case M.lookup (pktCommand p) responses of
         Nothing -> logInfo $ formatS "Unhandled packet from damn: {}" [show p]
-        Just callback -> callback p
+        Just callback -> do
+            st <- liftP get
+            callback p st
     if pktCommand p == "disconnect"
         then let arg = pktArgs p ^. ix "e"
               in when (arg /= "ok") $ throw (ServerDisconnect arg)
@@ -83,7 +85,7 @@ auth h = hprint h "dAmnClient 0.3\nagent=melvin 0.1\n\0" ()
 
 
 -- | Big ol' list of callbacks!
-type Callback = Packet -> Consumer ClientP Packet SafeIO ()
+type Callback = Packet -> ClientSettings -> Consumer ClientP Packet SafeIO ()
 
 responses :: M.Map Text Callback
 responses = M.fromList [ ("dAmnServer", res_dAmnServer)
@@ -91,14 +93,14 @@ responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        ]
 
 res_dAmnServer :: Callback
-res_dAmnServer _ = do
-    (num, (u, tok)) <- liftP . gets $ clientNumber &&& view username &&& view token
+res_dAmnServer _ st = do
+    let (num, (u, tok)) = (clientNumber &&& view username &&& view token) st
     logInfo $ formatS "Client #{} handshook successfully." [num]
     writeServer $ formatS "login {}\npk={}\n" [u, tok]
 
 res_login :: Callback
-res_login Packet { pktArgs = args } = do
-    uname <- liftP $ gets (view username)
+res_login Packet { pktArgs = args } st = do
+    let uname = st ^. username
     case args ^. ix "e" of
         "ok" -> do
             writeClient $ rplNotify uname "Authenticated successfully."

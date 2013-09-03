@@ -51,13 +51,13 @@ runClientPair index (h, host, _) = do
 
             -- | Run the client thread.
             --
-            -- No error catching here because if the client exits, hu kars
-            -- what happened on dAmn?
+            -- This isn't retried, unlike dAmn, because if the client exits
+            -- nobody really cares what happened on dAmn
             rec client <- async $ do
-                    putMVar (set ^. clientThreadId) client
-                    m <- runMelvin set $ Client.packetStream h >-> Client.responder
-                    performGC
-                    return m
+                 putMVar (set ^. clientThreadId) client
+                 m <- runMelvin set $ Client.packetStream h >-> Client.responder
+                 performGC
+                 return m
 
             -- | Run the server thread.
             --

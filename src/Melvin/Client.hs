@@ -53,7 +53,7 @@ type Callback = Packet -> ClientSettings -> Consumer ClientP Packet SafeIO Bool
 responses :: M.Map Text Callback
 responses = M.fromList [ ("PING", res_ping)
                        , ("QUIT", res_quit)
-                       , ("USER", (\_ _ -> return True))
+                       , ("USER", \_ _ -> return True)
                        , ("MODE", res_mode)
                        , ("JOIN", res_join)
                        ]
