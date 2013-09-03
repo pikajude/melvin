@@ -1,6 +1,7 @@
 module Melvin.Client.Packet (
   Packet(..),
   parse,
+  render,
 
   rplMyInfo,
   rplNotify,
@@ -65,16 +66,16 @@ render (Packet pr c args) = maybe "" ((++" ") . T.cons ':') pr
 
 
 -- | Predefined formatted packets
-rplMyInfo :: Text -> Text
-rplMyInfo n = render $ Packet hostname "004" [n, "chat.deviantart.com", "dAmnServer0.3", "qov", "i"]
+rplMyInfo :: Text -> Packet
+rplMyInfo n = Packet hostname "004" [n, "chat.deviantart.com", "dAmnServer0.3", "qov", "i"]
 
-rplNotify :: Text -> Text -> Text
-rplNotify n msg = render $ Packet hostname "273" [n, msg]
+rplNotify :: Text -> Text -> Packet
+rplNotify n msg = Packet hostname "273" [n, msg]
 
-errNoNicknameGiven, errNeedMoreParams, errPasswordMismatch :: Text -> Text
-errNoNicknameGiven n = render $ Packet hostname "431" [n, "No nickname given"]
-errNeedMoreParams n = render $ Packet hostname "461" [n, "Need more parameters"]
-errPasswordMismatch n = render $ Packet hostname "464" [n, "Authentication failed. Try again."]
+errNoNicknameGiven, errNeedMoreParams, errPasswordMismatch :: Text -> Packet
+errNoNicknameGiven n = Packet hostname "431" [n, "No nickname given"]
+errNeedMoreParams n = Packet hostname "461" [n, "Need more parameters"]
+errPasswordMismatch n = Packet hostname "464" [n, "Authentication failed. Try again."]
 
 hostname :: Maybe Text
 hostname = Just "chat.deviantart.com"

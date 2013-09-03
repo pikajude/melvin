@@ -13,6 +13,8 @@ module Melvin.Types (
   clientThreadId,
   serverThreadId,
   retryWait,
+  loggedIn,
+  joinList,
 
   writeClient,
   writeServer,
@@ -26,9 +28,16 @@ import Control.Lens
 import Control.Proxy
 import Control.Proxy.Safe
 import Control.Proxy.Trans.State
+import Data.Set
 import Data.Text
+import Melvin.Client.Packet
 import Melvin.Logger
 import Melvin.Prelude
+
+data Chatroom =
+          Chatroom Text
+        | PrivateChat Text
+        deriving (Eq, Ord)
 
 data ClientSettings = ClientSettings
         { clientNumber          :: Integer
@@ -42,21 +51,24 @@ data ClientSettings = ClientSettings
         , _clientThreadId       :: MVar (Async (Either SomeException ()))
         , _serverThreadId       :: MVar (Async (Either SomeException ()))
         , _retryWait            :: Integer
+        , _loggedIn             :: Bool
+        , _joinList             :: Set Chatroom
         }
 
 makeLenses ''ClientSettings
 
-writeClient :: Proxy p => Text -> ExceptionP (StateP ClientSettings p) a' a b' b SafeIO ()
+writeClient :: Proxy p => Packet -> ExceptionP (StateP ClientSettings p) a' a b' b SafeIO ()
 writeClient text = do
-    logInfo $ show text
+    let r = render text
+    logInfo r
     cc <- liftP $ gets (view clientChan)
-    tryIO $ writeChan cc text
+    tryIO $ writeChan cc r
 
 writeServer :: Proxy p => Text -> ExceptionP (StateP ClientSettings p) a' a b' b SafeIO ()
 writeServer text = do
     logInfo $ show text
     sc <- liftP $ gets (view serverChan)
-    tryIO $ writeChan sc text
+    tryIO $ writeChan sc (text ++ "\0")
 
 killClient :: Proxy p => ExceptionP (StateP ClientSettings p) a' a b' b SafeIO ()
 killClient = do

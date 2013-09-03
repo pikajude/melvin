@@ -51,20 +51,20 @@ greet h Packet {
     write h $ formatS ":chat.deviantart.com 002 {} :Your host is chat.deviantart.com, running dAmnServer 0.3\r\n" [nick]
     write h $ formatS ":chat.deviantart.com 004 {} chat.deviantart.com dAmnServer0.3 qov i\r\n" [nick]
     write h $ formatS ":chat.deviantart.com 005 {} PREFIX=(qov)~@+\r\n" [nick]
-greet h _ = write h $ errNoNicknameGiven "stupid"
+greet h _ = write h . render $ errNoNicknameGiven "stupid"
 
 respond :: Handle -> Text -> Packet -> AuthState ()
 respond h text packet =
     case text of
         "NICK" -> case pktArguments packet of
-                      [] -> write h $ errNoNicknameGiven "stupid"
+                      [] -> write h . render $ errNoNicknameGiven "stupid"
                       (us:_) -> do
                           acUsername ?= us
                           greet h packet
         "PASS" -> case pktArguments packet of
                       [] -> do
                           n <- use $ acNick . _Just
-                          write h $ errNeedMoreParams n
+                          write h . render $ errNeedMoreParams n
                       (pass:_) -> acPassword ?= pass
         _ -> return ()
 
@@ -77,20 +77,20 @@ getAuthInfo h = fix $ \f -> do
     case ac of
         AuthClient _ (Just u) (Just p) -> do
             uname <- use $ acUsername . _Just
-            write h $ rplNotify uname "Fetching token..."
+            write h . render $ rplNotify uname "Fetching token..."
             io $ fmap (fmap (uname,)) $ getToken u p
         _ -> f
 
 authFailure :: Handle -> AuthState ()
 authFailure h = do
     uname <- use $ acUsername . _Just
-    write h $ errPasswordMismatch uname
+    write h . render $ errPasswordMismatch uname
     acPassword .= Nothing
 
 authSuccess :: Handle -> AuthState ()
 authSuccess h = do
     uname <- use $ acUsername . _Just
-    write h $ rplNotify uname "Got a token."
+    write h . render $ rplNotify uname "Got a token."
 
 write :: MonadIO m => Handle -> Text -> m ()
 write h s = do

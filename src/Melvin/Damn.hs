@@ -72,8 +72,9 @@ responder :: Proxy p
           => () -> Consumer (ExceptionP (StateP ClientSettings p)) Packet SafeIO ()
 responder () = fix $ \f -> do
     p <- request ()
-    fromJust (M.lookup (pktCommand p) responses) p
-    logInfo (show p)
+    case M.lookup (pktCommand p) responses of
+        Nothing -> logInfo $ formatS "Unhandled packet from damn: {}" [show p]
+        Just callback -> callback p
     unless (pktCommand p == "disconnect") f
 
 auth :: Handle -> IO ()
@@ -100,7 +101,9 @@ res_login :: Proxy p => Callback p
 res_login Packet { pktArgs = args } = do
     uname <- liftP $ gets (view username)
     if args ^?! ix "e" == "ok"
-        then writeClient $ rplNotify uname "Authenticated successfully."
+        then do
+            writeClient $ rplNotify uname "Authenticated successfully."
+            liftP $ modify (loggedIn .~ True)
         else do
             writeClient $ rplNotify uname "Authentication failed!"
             throw AuthenticationFailed

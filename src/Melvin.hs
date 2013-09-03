@@ -114,6 +114,8 @@ buildClientSettings i h u t = do
         , _serverThreadId       = mv2
         , _clientThreadId       = mv3
         , _retryWait            = 5
+        , _loggedIn             = False
+        , _joinList             = mempty
         }
 
 insertDamn :: ClientSettings -> IO ()
