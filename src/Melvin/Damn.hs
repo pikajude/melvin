@@ -70,26 +70,26 @@ packetStream mv () = bracket id
 responder :: () -> Consumer ClientP Packet SafeIO ()
 responder () = handle handler $ fix $ \f -> do
     p <- request ()
-    case M.lookup (pktCommand p) responses of
-        Nothing -> logInfo $ formatS "Unhandled packet from damn: {}" [show p]
+    continue <- case M.lookup (pktCommand p) responses of
+        Nothing -> do
+            logInfo $ formatS "Unhandled packet from damn: {}" [show p]
+            return False
         Just callback -> do
             st <- liftP get
             callback p st
-    if pktCommand p == "disconnect"
-        then let arg = pktArgs p ^. ix "e"
-              in when (arg /= "ok") $ throw (ServerDisconnect arg)
-        else f
+    when continue f
 
 auth :: Handle -> IO ()
 auth h = hprint h "dAmnClient 0.3\nagent=melvin 0.1\n\0" ()
 
 
 -- | Big ol' list of callbacks!
-type Callback = Packet -> ClientSettings -> Consumer ClientP Packet SafeIO ()
+type Callback = Packet -> ClientSettings -> Consumer ClientP Packet SafeIO Bool
 
 responses :: M.Map Text Callback
 responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        , ("login", res_login)
+                       , ("disconnect", res_disconnect)
                        ]
 
 res_dAmnServer :: Callback
@@ -97,6 +97,7 @@ res_dAmnServer _ st = do
     let (num, (u, tok)) = (clientNumber &&& view username &&& view token) st
     logInfo $ formatS "Client #{} handshook successfully." [num]
     writeServer $ formatS "login {}\npk={}\n" [u, tok]
+    return True
 
 res_login :: Callback
 res_login Packet { pktArgs = args } st = do
@@ -105,8 +106,18 @@ res_login Packet { pktArgs = args } st = do
         "ok" -> do
             writeClient $ rplNotify uname "Authenticated successfully."
             modifyState (loggedIn .~ True)
+            return True
         x -> do
             writeClient $ rplNotify uname "Authentication failed!"
             throw $ AuthenticationFailed x
+
+res_disconnect :: Callback
+res_disconnect Packet { pktArgs = args } st = do
+    let uname = st ^. username
+    case args ^. ix "e" of
+        "ok" -> return False
+        n -> do
+            writeClient $ rplNotify uname $ "Disconnected: " ++ n
+            throw $ ServerDisconnect n
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}
