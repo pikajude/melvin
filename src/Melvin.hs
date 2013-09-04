@@ -74,9 +74,9 @@ runClientPair index (h, host, _) = do
                      case result of
                          r@Right{..} -> return r
                          Left err -> do
-                            if isRetryable err
-                                then f (settings & retryWait +~ 5)
-                                else return $ Left err) set
+                             if isRetryable err
+                                 then f (settings & retryWait +~ 5)
+                                 else return $ Left err) set
 
             result <- liftM2 (,) (wait client) (wait server)
             case result of
