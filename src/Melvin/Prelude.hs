@@ -28,7 +28,7 @@ module Melvin.Prelude (
 ) where
 
 import           Control.Applicative
-import           Control.Lens as X
+import           Control.Lens as X hiding  (Level)
 import           Control.Monad.IO.Class
 import           Control.Monad.State
 import           Control.Proxy

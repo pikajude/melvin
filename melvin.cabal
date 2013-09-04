@@ -31,7 +31,7 @@ executable melvin
                      , cprng-aes
                      , damnpacket
                      , HTTP
-                     , lens
+                     , lens >= 3.9
                      , mtl
                      , network
                      , old-locale
