@@ -28,21 +28,21 @@ module Melvin.Prelude (
 ) where
 
 import           Control.Applicative
-import           Control.Lens as X hiding  (Level)
+import           Control.Lens as X hiding       (Level)
 import           Control.Monad.IO.Class
 import           Control.Monad.State
-import           Control.Proxy
+import           Control.Proxy as X
 import           Control.Proxy.Safe
-import           Control.Proxy.Trans.State
+import           Control.Proxy.Trans.State as X
 import           Data.Monoid as X
-import           Data.Text                 (Text, pack)
+import           Data.Text                      (Text, pack)
 import           Data.Text.Format as X
-import           Data.Text.Format.Params   (Params)
+import           Data.Text.Format.Params        (Params)
 import qualified Data.Text.IO as IO
-import           Data.Text.Lazy            (toStrict)
-import           Prelude as X hiding       ((++), putStrLn, print, show)
+import           Data.Text.Lazy                 (toStrict)
+import           Prelude as X hiding            ((++), putStrLn, print, show)
 import qualified Prelude as P
-import           System.IO as X            (Handle, hClose, hFlush, hIsClosed, hIsEOF)
+import           System.IO as X                 (Handle, hClose, hFlush, hIsClosed, hIsEOF)
 
 -- | Simple utility functions.
 show :: Show a => a -> Text

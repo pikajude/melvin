@@ -104,8 +104,8 @@ res_login Packet { pktArgs = args } st = do
     let uname = st ^. username
     case args ^. ix "e" of
         "ok" -> do
-            writeClient $ rplNotify uname "Authenticated successfully."
             modifyState (loggedIn .~ True)
+            writeClient $ rplNotify uname "Authenticated successfully."
             return True
         x -> do
             writeClient $ rplNotify uname "Authentication failed!"

@@ -12,7 +12,7 @@ import           Data.Maybe
 import qualified Data.Text as T
 import           Melvin.Client.Packet
 import           Melvin.Logger
-import           Melvin.Prelude
+import           Melvin.Prelude hiding (get, respond)
 import           Melvin.Token
 
 data AuthClient = AuthClient

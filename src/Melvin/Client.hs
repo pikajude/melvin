@@ -10,7 +10,8 @@ import           Control.Proxy.Safe
 import           Control.Proxy.Trans.State
 import qualified Data.Map as M
 import           Data.Maybe
-import           Melvin.Client.Packet
+import           Melvin.Chatrooms
+import           Melvin.Client.Packet hiding (render)
 import           Melvin.Logger
 import           Melvin.Prelude
 import           Melvin.Types
@@ -78,7 +79,15 @@ res_join :: Callback
 res_join Packet { pktArguments = a } st = do
     case a of
         [] -> writeClient $ errNeedMoreParams (st ^. username)
-        _rooms -> return ()
+        rooms -> do
+            l <- getsState $ view loggedIn
+            if l
+                then forM_ rooms $ \r ->
+                    case toChatroom r of
+                        Nothing -> writeClient $ errNoSuchChannel (st ^. username) r
+                        Just c -> render c >>= writeServer . formatS "join {}\n" . (:[])
+                else writeClient $
+                    rplNotify (st ^. username) "You're not logged in, you can't join stuff."
     return True
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}

@@ -8,7 +8,8 @@ module Melvin.Client.Packet (
 
   errNoNicknameGiven,
   errNeedMoreParams,
-  errPasswordMismatch
+  errPasswordMismatch,
+  errNoSuchChannel
 ) where
 
 import           Control.Applicative         ((*>), (<*), (<|>))
@@ -76,6 +77,9 @@ errNoNicknameGiven, errNeedMoreParams, errPasswordMismatch :: Text -> Packet
 errNoNicknameGiven n = Packet hostname "431" [n, "No nickname given"]
 errNeedMoreParams n = Packet hostname "461" [n, "Need more parameters"]
 errPasswordMismatch n = Packet hostname "464" [n, "Authentication failed. Try again."]
+
+errNoSuchChannel :: Text -> Text -> Packet
+errNoSuchChannel n t = Packet hostname "403" [n, t, "No such channel"]
 
 hostname :: Maybe Text
 hostname = Just "chat.deviantart.com"

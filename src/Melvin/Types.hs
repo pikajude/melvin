@@ -3,6 +3,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Melvin.Types (
+  Chatroom(..),
+
   ClientSettings(..),
   clientWriteLock,
   serverWriteLock,
@@ -123,7 +125,7 @@ getState = do
     cs <- liftP $ gets (view clientState)
     tryIO $ readMVar cs
 
-getsState :: (ClientState -> a) -> ClientP a' a b' b SafeIO a
+getsState :: (ClientState -> a0) -> ClientP a' a b' b SafeIO a0
 getsState f = do
     cs <- liftP $ gets (view clientState)
     st <- tryIO $ readMVar cs
