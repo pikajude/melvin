@@ -1,6 +1,8 @@
 module Melvin.Chatrooms (
   fromChannel,
   toChatroom,
+  toChannel,
+  fromChatroom,
   render
 ) where
 
@@ -9,6 +11,7 @@ import           Control.Proxy.Safe
 import           Data.Char
 import           Data.Function
 import           Data.List hiding ((++))
+import           Data.Maybe
 import           Data.Ord
 import qualified Data.Text as T
 import           Melvin.Prelude
@@ -32,3 +35,14 @@ render (PrivateChat u) = do
     uname <- liftP $ gets (view username)
     let pair = sortBy (comparing T.toLower) [uname, u]
     return $ "pchat:" ++ T.intercalate ":" pair
+
+toChannel :: Text -> ClientP a' a b' b SafeIO Text
+toChannel text
+    | "chat:" `T.isPrefixOf` text = return $ '#' `T.cons` T.drop 5 text
+    | otherwise = do
+        me <- liftP $ gets (view username)
+        let usernames = T.splitOn ":" (T.drop 6 text)
+        return . fromJust $ find (/= me) usernames
+
+fromChatroom :: Text -> ClientP a' a b' b SafeIO Text
+fromChatroom = toChannel

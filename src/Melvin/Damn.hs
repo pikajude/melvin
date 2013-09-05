@@ -13,15 +13,18 @@ import           Control.Proxy.Safe
 import           Control.Proxy.Trans.State
 import qualified Data.Map as M
 import           Data.Maybe
+import qualified Data.Set as S
 import qualified Data.Text as T
-import           Melvin.Client.Packet hiding (Packet(..), parse)
+import           Melvin.Chatrooms
+import           Melvin.Client.Packet hiding (Packet(..), parse, render)
+import qualified Melvin.Damn.Actions as Damn
 import           Melvin.Exception
 import           Melvin.Logger
 import           Melvin.Prelude
 import           Melvin.Types
 import           System.IO hiding            (isEOF, putStrLn)
 import           System.IO.Error
-import           Text.Damn.Packet
+import           Text.Damn.Packet hiding     (render)
 
 hGetTillNull :: Handle -> IO Text
 hGetTillNull h = do
@@ -60,6 +63,7 @@ packetStream mv () = bracket id
         isClosed <- tryIO $ hIsClosed h
         when (isEOF || isClosed) $ throw (ServerDisconnect "socket closed")
         line <- tryIO $ hGetTillNull h
+        logWarning $ show line
         case parse $ cleanup line of
             Left err -> throw $ ServerNoParse err line
             Right pk -> do
@@ -89,6 +93,7 @@ type Callback = Packet -> ClientSettings -> Consumer ClientP Packet SafeIO Bool
 responses :: M.Map Text Callback
 responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        , ("login", res_login)
+                       , ("join", res_join)
                        , ("disconnect", res_disconnect)
                        ]
 
@@ -106,10 +111,22 @@ res_login Packet { pktArgs = args } st = do
         "ok" -> do
             modifyState (loggedIn .~ True)
             writeClient $ rplNotify uname "Authenticated successfully."
+            joinlist <- getsState (view joinList)
+            forM_ (S.elems joinlist) Damn.join
             return True
         x -> do
             writeClient $ rplNotify uname "Authentication failed!"
             throw $ AuthenticationFailed x
+
+res_join :: Callback
+res_join Packet { pktParameter = p
+                , pktArgs = args } st = do
+    let user = st ^. username
+    channel <- toChannel $ fromJust p
+    case args ^. ix "e" of
+        "ok" -> writeClient $ cmdJoin user channel
+        "not privileged" -> writeClient $ errBannedFromChan user channel
+    return True
 
 res_disconnect :: Callback
 res_disconnect Packet { pktArgs = args } st = do

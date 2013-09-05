@@ -3,13 +3,16 @@ module Melvin.Client.Packet (
   parse,
   render,
 
+  cmdJoin,
+
   rplMyInfo,
   rplNotify,
 
   errNoNicknameGiven,
   errNeedMoreParams,
   errPasswordMismatch,
-  errNoSuchChannel
+  errNoSuchChannel,
+  errBannedFromChan
 ) where
 
 import           Control.Applicative         ((*>), (<*), (<|>))
@@ -67,19 +70,26 @@ render (Packet pr c args) = maybe "" ((++" ") . T.cons ':') pr
 
 
 -- | Predefined formatted packets
+cmdJoin :: Text -> Text -> Packet
+cmdJoin n channel = Packet host "JOIN" [T.cons ':' channel]
+    where host = Just $ formatS "{}!{}@chat.deviantart.com" [n]
+
+
 rplMyInfo :: Text -> Packet
 rplMyInfo n = Packet hostname "004" [n, "chat.deviantart.com", "dAmnServer0.3", "qov", "i"]
 
 rplNotify :: Text -> Text -> Packet
 rplNotify n msg = Packet hostname "273" [n, msg]
 
+
 errNoNicknameGiven, errNeedMoreParams, errPasswordMismatch :: Text -> Packet
-errNoNicknameGiven n = Packet hostname "431" [n, "No nickname given"]
-errNeedMoreParams n = Packet hostname "461" [n, "Need more parameters"]
+errNoNicknameGiven  n = Packet hostname "431" [n, "No nickname given"]
+errNeedMoreParams   n = Packet hostname "461" [n, "Need more parameters"]
 errPasswordMismatch n = Packet hostname "464" [n, "Authentication failed. Try again."]
 
-errNoSuchChannel :: Text -> Text -> Packet
-errNoSuchChannel n t = Packet hostname "403" [n, t, "No such channel"]
+errNoSuchChannel, errBannedFromChan :: Text -> Text -> Packet
+errNoSuchChannel  n t = Packet hostname "403" [n, t, "No such channel"]
+errBannedFromChan n t = Packet hostname "474" [n, t, "Not privileged"]
 
 hostname :: Maybe Text
 hostname = Just "chat.deviantart.com"
