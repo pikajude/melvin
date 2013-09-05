@@ -69,7 +69,7 @@ res_ping Packet { pktArguments = a } _ = do
 res_quit :: Callback
 res_quit _ st = do
     logInfo $ formatS "Client #{} quit cleanly." [clientNumber st]
-    writeServer "disconnect\n"
+    writeServer Damn.disconnect
     return False
 
 res_mode :: Callback
@@ -87,7 +87,7 @@ res_join Packet { pktArguments = a } st = do
                 Just c -> do
                     l <- getsState $ view loggedIn
                     if l
-                       then Damn.join c
+                       then writeServer =<< Damn.join c
                        else modifyState (joinList %~ S.insert c)
     return True
 

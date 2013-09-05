@@ -45,6 +45,7 @@ import           Melvin.Client.Packet
 import           Melvin.Exception
 import           Melvin.Logger
 import           Melvin.Prelude
+import qualified Text.Damn.Packet as D
 
 data Chatroom =
           Chatroom Text
@@ -88,13 +89,13 @@ writeClient text = do
             E.throw $ ClientSocketErr e
           r = render text
 
-writeServer :: Text -> ClientP a' a b' b SafeIO ()
+writeServer :: D.Packet -> ClientP a' a b' b SafeIO ()
 writeServer text = do
     (mv, h) <- liftP $ gets (view serverWriteLock &&& view serverMVar)
     tryIO $ E.bracket
         (takeMVar mv >> readMVar h)
         (\_ -> putMVar mv ())
-        (\hndl -> (hPutStr hndl (text ++ "\0") >> logInfoIO (show text)) `E.catch` fallback)
+        (\hndl -> (hPutStr hndl (D.render text ++ "\n\0") >> logInfoIO (show text)) `E.catch` fallback)
     where fallback e = do
             logWarningIO $ "(write failed) " ++ show text
             E.throw $ ServerSocketErr e

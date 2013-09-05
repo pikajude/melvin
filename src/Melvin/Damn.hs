@@ -99,23 +99,23 @@ responses = M.fromList [ ("dAmnServer", res_dAmnServer)
 
 res_dAmnServer :: Callback
 res_dAmnServer _ st = do
-    let (num, (u, tok)) = (clientNumber &&& view username &&& view token) st
+    let (num, (user, tok)) = (clientNumber &&& view username &&& view token) st
     logInfo $ formatS "Client #{} handshook successfully." [num]
-    writeServer $ formatS "login {}\npk={}\n" [u, tok]
+    writeServer $ Damn.login user tok
     return True
 
 res_login :: Callback
 res_login Packet { pktArgs = args } st = do
-    let uname = st ^. username
+    let user = st ^. username
     case args ^. ix "e" of
         "ok" -> do
             modifyState (loggedIn .~ True)
-            writeClient $ rplNotify uname "Authenticated successfully."
+            writeClient $ rplNotify user "Authenticated successfully."
             joinlist <- getsState (view joinList)
             forM_ (S.elems joinlist) Damn.join
             return True
         x -> do
-            writeClient $ rplNotify uname "Authentication failed!"
+            writeClient $ rplNotify user "Authentication failed!"
             throw $ AuthenticationFailed x
 
 res_join :: Callback
@@ -126,15 +126,16 @@ res_join Packet { pktParameter = p
     case args ^. ix "e" of
         "ok" -> writeClient $ cmdJoin user channel
         "not privileged" -> writeClient $ errBannedFromChan user channel
+        _ -> return ()
     return True
 
 res_disconnect :: Callback
 res_disconnect Packet { pktArgs = args } st = do
-    let uname = st ^. username
+    let user = st ^. username
     case args ^. ix "e" of
         "ok" -> return False
         n -> do
-            writeClient $ rplNotify uname $ "Disconnected: " ++ n
+            writeClient $ rplNotify user $ "Disconnected: " ++ n
             throw $ ServerDisconnect n
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}
