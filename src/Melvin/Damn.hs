@@ -15,6 +15,7 @@ import qualified Data.Map as M
 import           Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Text.Read as T
 import           Melvin.Chatrooms
 import           Melvin.Client.Packet hiding (Packet(..), parse, render)
 import qualified Melvin.Damn.Actions as Damn
@@ -22,7 +23,7 @@ import           Melvin.Exception
 import           Melvin.Logger
 import           Melvin.Prelude
 import           Melvin.Types
-import           System.IO hiding            (isEOF, putStrLn)
+import           System.IO hiding            (isEOF, print, putStrLn)
 import           System.IO.Error
 import           Text.Damn.Packet hiding     (render)
 
@@ -94,6 +95,7 @@ responses :: M.Map Text Callback
 responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        , ("login", res_login)
                        , ("join", res_join)
+                       , ("property", res_property)
                        , ("disconnect", res_disconnect)
                        ]
 
@@ -128,6 +130,62 @@ res_join Packet { pktParameter = p
         "not privileged" -> writeClient $ errBannedFromChan user channel
         _ -> return ()
     return True
+
+res_property :: Callback
+res_property Packet { pktParameter = p
+                    , pktArgs = args
+                    , pktBody = body } st = do
+    let user = st ^. username
+    channel <- toChannel $ fromJust p
+    case args ^. ix "p" of
+        "topic" -> case body of
+            Nothing -> writeClient $ rplNoTopic user channel "No topic is set"
+            Just b -> do
+                writeClient $ rplTopic user channel b
+                writeClient $ rplTopicWhoTime user channel (args ^. ix "by") (args ^. ix "ts")
+
+        "title" -> logInfo $ formatS "Received title for {}: {}" [channel, body ^. _Just]
+
+        "privclasses" -> do
+            logInfo $ formatS "Received privclasses for {}" [channel]
+            setPrivclasses channel $ body ^. _Just
+
+        "members" -> do
+            setMembers channel $ body ^. _Just
+            m <- getsState (\s -> s ^. users ^?! ix (toChatroom channel ^?! _Just))
+            writeClient $ rplNameReply channel user (map renderUser $ M.elems m)
+
+        x -> logError $ formatS "unhandled property {}" [x]
+
+    return True
+    where
+        setPrivclasses c b = do
+            let pcs = toPrivclasses $
+                  ((T.decimal *** T.tail) . T.breakOn ":") <$> T.splitOn "\n" b
+                chat = toChatroom c ^?! _Just
+            modifyState (privclasses . at chat ?~ pcs)
+
+        -- decimal x returns a thing like Right (number, text)
+        toPrivclasses ((Right (n,_),t):ns) = M.insert t (mkPrivclass n t) (toPrivclasses ns)
+        toPrivclasses ((Left _,_):ns) = toPrivclasses ns
+        toPrivclasses [] = M.empty
+
+        setMembers c b = do
+            let chat = toChatroom c ^?! _Just
+            pcs <- getsState (\s -> s ^. privclasses ^?! ix chat)
+            let users_ = foldr (toUser pcs) M.empty $ T.splitOn "\n\n" b
+            modifyState (users . at chat ?~ users_)
+
+        toUser pcs text = M.insert uname $
+                mkUser pcs uname (g "pc")
+                                 (read . T.unpack $ g "usericon")
+                                 (T.head $ g "symbol")
+                                 (g "realname")
+                                 (g "gpc")
+            where (header:as) = T.splitOn "\n" text
+                  uname = last $ T.splitOn " " header
+                  attrs = map (second T.tail . T.breakOn "=") as
+                  g k = fromJust $ lookup k attrs
 
 res_disconnect :: Callback
 res_disconnect Packet { pktArgs = args } st = do

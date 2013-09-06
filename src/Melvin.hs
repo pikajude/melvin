@@ -94,8 +94,10 @@ buildClientSettings i h u t = do
     mv2 <- newEmptyMVar
     mv3 <- newEmptyMVar
     csm <- newMVar ClientState
-             { _loggedIn = False
-             , _joinList = mempty
+             { _loggedIn    = False
+             , _joinList    = mempty
+             , _privclasses = mempty
+             , _users       = mempty
              }
     return ClientSettings
         { clientNumber     = i

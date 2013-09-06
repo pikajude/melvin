@@ -5,6 +5,23 @@
 module Melvin.Types (
   Chatroom(..),
 
+  Privclass,
+  Symbol,
+  pcLevel,
+  pcTitle,
+  pcSymbol,
+  mkPrivclass,
+
+  User,
+  userMember,
+  userPrivclass,
+  userIcon,
+  userSymbol,
+  userRealname,
+  userGpc,
+  mkUser,
+  renderUser,
+
   ClientSettings(..),
   clientWriteLock,
   serverWriteLock,
@@ -23,6 +40,8 @@ module Melvin.Types (
   ClientState(..),
   loggedIn,
   joinList,
+  privclasses,
+  users,
 
   modifyState,
   getState,
@@ -39,22 +58,63 @@ import qualified Control.Exception as E
 import           Control.Proxy
 import           Control.Proxy.Safe
 import           Control.Proxy.Trans.State
+import           Data.Map                  (Map)
 import           Data.Set
 import           Data.Text
 import           Melvin.Client.Packet
 import           Melvin.Exception
 import           Melvin.Logger
-import           Melvin.Prelude
+import           Melvin.Prelude hiding     (cons)
 import qualified Text.Damn.Packet as D
 
 data Chatroom =
           Chatroom Text
         | PrivateChat Text
-        deriving (Eq, Ord)
+        deriving (Eq, Ord, Show)
+
+data Symbol = Founder | Op | Voice | None
+            deriving (Eq, Ord, Show)
+
+data Privclass = Privclass
+        { pcLevel  :: Int
+        , pcTitle  :: Text
+        , pcSymbol :: Symbol
+        } deriving (Eq, Ord, Show)
+
+mkPrivclass :: Int -> Text -> Privclass
+mkPrivclass n t = Privclass n t (toSymbol n)
+    where toSymbol s
+            | s == 99 = Founder
+            | s >= 70 = Op
+            | s >= 35 = Voice
+            | otherwise = None
+
+data User = User
+        { userMember    :: Text
+        , userPrivclass :: Privclass
+        , userIcon      :: Int
+        , userSymbol    :: Char
+        , userRealname  :: Text
+        , userGpc       :: Text
+        } deriving (Eq, Ord, Show)
+
+mkUser :: Map Text Privclass -> Text -> Text -> Int -> Char -> Text -> Text -> User
+mkUser ps m p i s r g =
+        User m (ps ^?! ix p) i s r g
+
+renderUser :: User -> Text
+renderUser User { userMember = m, userPrivclass = pc } =
+    case pcSymbol pc of
+        None    -> m
+        Voice   -> cons '+' m
+        Op      -> cons '@' m
+        Founder -> cons '~' m
 
 data ClientState = ClientState
-        { _loggedIn :: Bool
-        , _joinList :: Set Chatroom
+        { _loggedIn    :: Bool
+        , _joinList    :: Set Chatroom
+        , _privclasses :: Map Chatroom (Map Text Privclass)
+        , _users       :: Map Chatroom (Map Text User)
         }
 
 makeLenses ''ClientState
