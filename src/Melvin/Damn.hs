@@ -110,6 +110,7 @@ recv_responses :: M.Map Text RecvCallback
 recv_responses = M.fromList [ ("msg", res_recv_msg)
                             , ("action", res_recv_action)
                             , ("join", res_recv_join)
+                            , ("part", res_recv_part)
                             ]
 
 res_dAmnServer :: Callback
@@ -248,15 +249,14 @@ res_recv_join Packet { pktParameter = p }
                      } _st = do
     channel <- toChannel $ fromJust p
     let room = toChatroom channel ^?! _Just
-    us <- getsState (\s -> s ^. users . ix room)
-    case M.lookup (u ^. _Just) us of
+    us <- getsState (\s -> s ^? users . ix room . ix (u ^. _Just))
+    case us of
         Nothing -> do
             user <- buildUser (u ^. _Just) (b ^. _Just) room
             modifyState (users . ix room %~ M.insert (u ^. _Just) user)
             writeClient $ cmdJoin (u ^. _Just) channel
         Just r -> do
-            modifyState (users . ix room . ix (u ^. _Just) . userJoinCount
-                            .~ (r ^. userJoinCount + 1))
+            modifyState (users . ix room . ix (u ^. _Just) . userJoinCount +~ 1)
             writeClient $ cmdDupJoin (u ^. _Just) channel (r ^. userJoinCount + 1)
     return True
     where
@@ -269,5 +269,22 @@ res_recv_join Packet { pktParameter = p }
                                      (g "gpc")
             where args' = map (second T.tail . T.breakOn "=") (T.splitOn "\n" as)
                   g k = lookup k args' ^. _Just
+
+res_recv_part :: RecvCallback
+res_recv_part Packet { pktParameter = p }
+              Packet { pktParameter = u
+                     , pktArgs = args
+                     } _st = do
+    channel <- toChannel $ p ^. _Just
+    let room = toChatroom channel ^?! _Just
+    us <- getsState (\s -> s ^?! users . ix room . ix (u ^. _Just))
+    case us ^. userJoinCount of
+        1 -> do
+            modifyState (users . ix room %~ M.delete (u ^. _Just))
+            writeClient $ cmdPart (u ^. _Just) channel (fromMaybe "no reason" $ args ^? ix "r")
+        n -> do
+            modifyState (users . ix room . ix (u ^. _Just) . userJoinCount -~ 1)
+            writeClient $ cmdDupPart (u ^. _Just) channel (n - 1)
+    return True
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}

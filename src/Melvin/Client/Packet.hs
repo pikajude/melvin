@@ -4,9 +4,11 @@ module Melvin.Client.Packet (
   render,
 
   cmdJoin,
+  cmdDupJoin,
+  cmdPart,
+  cmdDupPart,
   cmdPrivmsg,
   cmdPrivaction,
-  cmdDupJoin,
 
   rplMyInfo,
   rplNotify,
@@ -80,20 +82,24 @@ render (Packet pr c args) = maybe "" ((++" ") . T.cons ':') pr
 
 -- | Packets that aren't reply packets
 cmdJoin :: Text -> Text -> Packet
-cmdJoin n channel = Packet host "JOIN" [channel]
-    where host = Just $ formatS "{}!{}@chat.deviantart.com" [n, n]
+cmdJoin n channel = Packet (hostOf n) "JOIN" [channel]
 
-cmdPrivmsg, cmdPrivaction :: Text -> Text -> Text -> Packet
-cmdPrivmsg n channel text = Packet host "PRIVMSG" [channel, text]
-    where host = Just $ formatS "{}!{}@chat.deviantart.com" [n, n]
+cmdPrivmsg, cmdPrivaction, cmdPart :: Text -> Text -> Text -> Packet
+cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG" [channel, text]
+cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG" [channel, ac text]
+    where ac m = "\1ACTION " ++ m ++ "\1"
+cmdPart n channel reason = Packet (hostOf n) "PART" [channel, reason]
 
-cmdPrivaction n channel text = Packet host "PRIVMSG" [channel, ac text]
-    where host = Just $ formatS "{}!{}@chat.deviantart.com" [n, n]
-          ac m = "\1ACTION " ++ m ++ "\1"
-
-cmdDupJoin :: Text -> Text -> Int -> Packet
+cmdDupJoin, cmdDupPart :: Text -> Text -> Int -> Packet
 cmdDupJoin n channel cnt = Packet hostname "NOTICE"
-    [channel, formatS "{} has joined again ({} times)" [n, show cnt]]
+    [channel, formatS "{} has joined again (now joined {})" [n, readable cnt]]
+cmdDupPart n channel cnt = Packet hostname "NOTICE"
+    [channel, formatS "{} has left (now joined {})" [n, readable cnt]]
+
+readable :: (Eq a, Num a, Show a) => a -> Text
+readable 1 = "once"
+readable 2 = "twice"
+readable m = show m ++ " times"
 
 -- | Reply packets
 rplMyInfo :: Text -> Packet
@@ -126,3 +132,6 @@ errBannedFromChan n t = Packet hostname "474" [n, t, "Not privileged"]
 
 hostname :: Maybe Text
 hostname = Just "chat.deviantart.com"
+
+hostOf :: Text -> Maybe Text
+hostOf = Just . formatS "{}!{}@chat.deviantart.com" . join (,)
