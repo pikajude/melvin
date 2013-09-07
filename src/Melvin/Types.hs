@@ -19,6 +19,7 @@ module Melvin.Types (
   userSymbol,
   userRealname,
   userGpc,
+  userJoinCount,
   mkUser,
   renderUser,
 
@@ -90,16 +91,19 @@ mkPrivclass n t = Privclass n t (toSymbol n)
             | otherwise = None
 
 data User = User
-        { userMember    :: Text
-        , userPrivclass :: Maybe Privclass
-        , userIcon      :: Int
-        , userSymbol    :: Char
-        , userRealname  :: Text
-        , userGpc       :: Text
+        { userMember     :: Text
+        , userPrivclass  :: Maybe Privclass
+        , userIcon       :: Int
+        , userSymbol     :: Char
+        , userRealname   :: Text
+        , userGpc        :: Text
+        , _userJoinCount :: Int
         } deriving (Eq, Ord, Show)
 
+makeLenses ''User
+
 mkUser :: Map Text Privclass -> Text -> Text -> Int -> Char -> Text -> Text -> User
-mkUser ps m p = User m (ps ^? ix p)
+mkUser ps m p i s r g = User m (ps ^? ix p) i s r g 1
 
 renderUser :: User -> Text
 renderUser User { userMember = m, userPrivclass = pc } =

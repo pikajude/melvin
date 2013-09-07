@@ -5,6 +5,8 @@ module Melvin.Client.Packet (
 
   cmdJoin,
   cmdPrivmsg,
+  cmdPrivaction,
+  cmdDupJoin,
 
   rplMyInfo,
   rplNotify,
@@ -81,9 +83,17 @@ cmdJoin :: Text -> Text -> Packet
 cmdJoin n channel = Packet host "JOIN" [channel]
     where host = Just $ formatS "{}!{}@chat.deviantart.com" [n, n]
 
-cmdPrivmsg :: Text -> Text -> Text -> Packet
+cmdPrivmsg, cmdPrivaction :: Text -> Text -> Text -> Packet
 cmdPrivmsg n channel text = Packet host "PRIVMSG" [channel, text]
     where host = Just $ formatS "{}!{}@chat.deviantart.com" [n, n]
+
+cmdPrivaction n channel text = Packet host "PRIVMSG" [channel, ac text]
+    where host = Just $ formatS "{}!{}@chat.deviantart.com" [n, n]
+          ac m = "\1ACTION " ++ m ++ "\1"
+
+cmdDupJoin :: Text -> Text -> Int -> Packet
+cmdDupJoin n channel cnt = Packet hostname "NOTICE"
+    [channel, formatS "{} has joined again ({} times)" [n, show cnt]]
 
 -- | Reply packets
 rplMyInfo :: Text -> Packet

@@ -9,16 +9,20 @@ module Melvin.Client.Auth (
 import           Control.Exception
 import           Control.Monad.State
 import           Data.Maybe
+import qualified Data.Set as S
 import qualified Data.Text as T
+import           Melvin.Chatrooms hiding (render)
 import           Melvin.Client.Packet
 import           Melvin.Logger
-import           Melvin.Prelude hiding (get, respond)
+import           Melvin.Prelude hiding   (get, respond)
 import           Melvin.Token
+import           Melvin.Types            (Chatroom)
 
 data AuthClient = AuthClient
         { _acNick     :: Maybe Text
         , _acUsername :: Maybe Text
         , _acPassword :: Maybe Text
+        , _acJoinlist :: S.Set Chatroom
         } deriving Show
 
 makeLenses ''AuthClient
@@ -26,12 +30,12 @@ makeLenses ''AuthClient
 type Username = Text
 type AuthState = StateT AuthClient IO
 
-authHandler :: SomeException -> IO (Either SomeException (Username, Text))
+authHandler :: SomeException -> IO (Either SomeException (Username, Text, S.Set Chatroom))
 authHandler = return . Left
 
-authenticate :: Handle -> IO (Either SomeException (Username, Text))
+authenticate :: Handle -> IO (Either SomeException (Username, Text, S.Set Chatroom))
 authenticate h = handle authHandler $
-    (`evalStateT` AuthClient Nothing Nothing Nothing) . fix $ \f -> do
+    (`evalStateT` AuthClient Nothing Nothing Nothing mempty) . fix $ \f -> do
         ai <- getAuthInfo h
         case ai of
             Nothing -> do
@@ -65,19 +69,28 @@ respond h text packet =
                           n <- use $ acNick . _Just
                           write h . render $ errNeedMoreParams n
                       (pass:_) -> acPassword ?= pass
+        "JOIN" -> case pktArguments packet of
+                      [] -> do
+                          n <- use $ acNick . _Just
+                          write h . render $ errNeedMoreParams n
+                      (room:_) | Just r <- toChatroom room
+                          -> acJoinlist %= S.insert r
+                      (r:_) -> do
+                          n <- use $ acNick . _Just
+                          write h . render $ errNoSuchChannel n r
         _ -> return ()
 
-getAuthInfo :: Handle -> AuthState (Maybe (Username, Text))
+getAuthInfo :: Handle -> AuthState (Maybe (Username, Text, S.Set Chatroom))
 getAuthInfo h = fix $ \f -> do
     line <- io $ hGetLine h
     logInfoIO line
     respond h =<< pktCommand $ parse line
     ac <- get
     case ac of
-        AuthClient _ (Just u) (Just p) -> do
+        AuthClient _ (Just u) (Just p) js -> do
             uname <- use $ acUsername . _Just
             write h . render $ rplNotify uname "Fetching token..."
-            io $ fmap (fmap (uname,)) $ getToken u p
+            io $ fmap (fmap (uname, , js)) $ getToken u p
         _ -> f
 
 authFailure :: Handle -> AuthState ()

@@ -19,6 +19,7 @@ import qualified Data.Text.Read as T
 import           Melvin.Chatrooms
 import           Melvin.Client.Packet hiding (Packet(..), parse, render)
 import qualified Melvin.Damn.Actions as Damn
+import           Melvin.Damn.Tablumps
 import           Melvin.Exception
 import           Melvin.Logger
 import           Melvin.Prelude
@@ -97,6 +98,7 @@ type RecvCallback = Packet -> Callback
 
 responses :: M.Map Text Callback
 responses = M.fromList [ ("dAmnServer", res_dAmnServer)
+                       , ("ping", res_ping)
                        , ("login", res_login)
                        , ("join", res_join)
                        , ("property", res_property)
@@ -105,7 +107,10 @@ responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        ]
 
 recv_responses :: M.Map Text RecvCallback
-recv_responses = M.fromList [ ("msg", res_recv_msg) ]
+recv_responses = M.fromList [ ("msg", res_recv_msg)
+                            , ("action", res_recv_action)
+                            , ("join", res_recv_join)
+                            ]
 
 res_dAmnServer :: Callback
 res_dAmnServer _ st = do
@@ -113,6 +118,9 @@ res_dAmnServer _ st = do
     logInfo $ formatS "Client #{} handshook successfully." [num]
     writeServer $ Damn.login user tok
     return True
+
+res_ping :: Callback
+res_ping _ _ = writeServer Damn.pong >> return True
 
 res_login :: Callback
 res_login Packet { pktArgs = args } st = do
@@ -186,7 +194,7 @@ res_property Packet { pktParameter = p
             let users_ = foldr (toUser pcs) M.empty $ T.splitOn "\n\n" b
             modifyState (users . at chat ?~ users_)
 
-        toUser pcs text = M.insert uname $
+        toUser pcs text = M.insertWith (\b _ -> b & userJoinCount +~ 1) uname $
                 mkUser pcs uname (g "pc")
                                  (read . T.unpack $ g "usericon")
                                  (T.head $ g "symbol")
@@ -219,7 +227,47 @@ res_recv_msg Packet { pktParameter = p }
                     , pktBody = b
                     } _st = do
     channel <- toChannel $ fromJust p
-    writeClient $ cmdPrivmsg (args ^. ix "from") channel (T.cons ':' $ b ^. _Just)
+    forM_ (T.splitOn "\n" . delump $ b ^. _Just) $ \line ->
+        writeClient $ cmdPrivmsg (args ^. ix "from") channel (T.cons ':' line)
     return True
+
+res_recv_action :: RecvCallback
+res_recv_action Packet { pktParameter = p }
+                Packet { pktArgs = args
+                       , pktBody = b
+                       } _st = do
+    channel <- toChannel $ fromJust p
+    forM_ (T.splitOn "\n" . delump $ b ^. _Just) $ \line ->
+        writeClient $ cmdPrivaction (args ^. ix "from") channel line
+    return True
+
+res_recv_join :: RecvCallback
+res_recv_join Packet { pktParameter = p }
+              Packet { pktParameter = u
+                     , pktBody = b
+                     } _st = do
+    channel <- toChannel $ fromJust p
+    let room = toChatroom channel ^?! _Just
+    us <- getsState (\s -> s ^. users . ix room)
+    case M.lookup (u ^. _Just) us of
+        Nothing -> do
+            user <- buildUser (u ^. _Just) (b ^. _Just) room
+            modifyState (users . ix room %~ M.insert (u ^. _Just) user)
+            writeClient $ cmdJoin (u ^. _Just) channel
+        Just r -> do
+            modifyState (users . ix room . ix (u ^. _Just) . userJoinCount
+                            .~ (r ^. userJoinCount + 1))
+            writeClient $ cmdDupJoin (u ^. _Just) channel (r ^. userJoinCount + 1)
+    return True
+    where
+        buildUser name as room = do
+            pcs <- getsState (\s -> s ^. privclasses . ix room)
+            return $ mkUser pcs name (g "pc")
+                                     (read . T.unpack $ g "usericon")
+                                     (T.head $ g "symbol")
+                                     (g "realname")
+                                     (g "gpc")
+            where args' = map (second T.tail . T.breakOn "=") (T.splitOn "\n" as)
+                  g k = lookup k args' ^. _Just
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}

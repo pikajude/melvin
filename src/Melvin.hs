@@ -15,6 +15,7 @@ import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.Fix
 import Control.Proxy
+import Data.Set
 import Melvin.Client as Client
 import Melvin.Damn as Damn
 import Melvin.Client.Auth
@@ -46,8 +47,8 @@ runClientPair index (h, host, _) = do
         Left err -> do
             logWarningIO $ "Client #" ++ show index ++ " couldn't authenticate: " ++ show err
             hClose h
-        Right (uname, token_) -> do
-            set <- buildClientSettings index h uname token_
+        Right (uname, token_, rs) -> do
+            set <- buildClientSettings index h uname token_ rs
 
             -- | Run the client thread.
             --
@@ -86,8 +87,8 @@ runClientPair index (h, host, _) = do
                 (_, Left m) -> logErrorIO $ "Client #" ++ show index
                                          ++ "'s server encountered an error: " ++ show m
 
-buildClientSettings :: Integer -> Handle -> Text -> Text -> IO ClientSettings
-buildClientSettings i h u t = do
+buildClientSettings :: Integer -> Handle -> Text -> Text -> Set Chatroom -> IO ClientSettings
+buildClientSettings i h u t j = do
     sc <- newMVar ()
     cc <- newMVar ()
     mv1 <- newEmptyMVar
@@ -95,7 +96,7 @@ buildClientSettings i h u t = do
     mv3 <- newEmptyMVar
     csm <- newMVar ClientState
              { _loggedIn    = False
-             , _joinList    = mempty
+             , _joinList    = j
              , _privclasses = mempty
              , _users       = mempty
              }

@@ -38,6 +38,7 @@ executable melvin
                      , optparse-applicative == 0.5.*
                      , pipes-safe
                      , pipes
+                     , rex
                      , text
                      , text-format
                      , time

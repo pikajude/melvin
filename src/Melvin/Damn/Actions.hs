@@ -1,4 +1,5 @@
 module Melvin.Damn.Actions (
+  pong,
   login,
   join,
   msg,
@@ -11,6 +12,9 @@ import Melvin.Chatrooms
 import Melvin.Prelude
 import Melvin.Types hiding     (token)
 import Text.Damn.Packet hiding (render)
+
+pong :: Packet
+pong = Packet "pong" Nothing mempty Nothing
 
 login :: Text -> Text -> Packet
 login user token = Packet
