@@ -99,8 +99,7 @@ data User = User
         } deriving (Eq, Ord, Show)
 
 mkUser :: Map Text Privclass -> Text -> Text -> Int -> Char -> Text -> Text -> User
-mkUser ps m p i s r g =
-        User m (ps ^?! ix p) i s r g
+mkUser ps m p = User m (ps ^?! ix p)
 
 renderUser :: User -> Text
 renderUser User { userMember = m, userPrivclass = pc } =

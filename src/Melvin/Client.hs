@@ -59,6 +59,7 @@ responses = M.fromList [ ("PING", res_ping)
                        , ("USER", \_ _ -> return True)
                        , ("MODE", res_mode)
                        , ("JOIN", res_join)
+                       , ("PRIVMSG", res_privmsg)
                        ]
 
 res_ping :: Callback
@@ -90,5 +91,15 @@ res_join Packet { pktArguments = a } st = do
                        then writeServer =<< Damn.join c
                        else modifyState (joinList %~ S.insert c)
     return True
+
+res_privmsg :: Callback
+res_privmsg Packet { pktArguments = (room:msg) } st = do
+    case toChatroom room of
+        Nothing -> writeClient $ errNoSuchChannel (st ^. username) room
+        Just r -> case msg of
+                      [] -> writeClient $ errNeedMoreParams (st ^. username)
+                      (m:_) -> writeServer =<< Damn.msg r m
+    return True
+res_privmsg _ st = writeClient (errNeedMoreParams (st ^. username)) >> return True
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}

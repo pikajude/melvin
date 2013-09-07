@@ -4,6 +4,7 @@ module Melvin.Client.Packet (
   render,
 
   cmdJoin,
+  cmdPrivmsg,
 
   rplMyInfo,
   rplNotify,
@@ -66,8 +67,8 @@ render (Packet pr c args) = maybe "" ((++" ") . T.cons ':') pr
                          ++ (if null args then "" else " ")
                          ++ T.unwords (showArgs args)
                          ++ "\r\n"
-    where showArgs [a] | " " `T.isInfixOf` a || T.null a || T.head a == ':'
-                             = [':' `T.cons` a]
+    where showArgs [a] | T.head a == ':' = [a]
+                       | " " `T.isInfixOf` a || T.null a = [':' `T.cons` a]
                        | otherwise = [a]
           showArgs (a:as) = a:showArgs as
           showArgs []     = mempty
@@ -78,6 +79,10 @@ render (Packet pr c args) = maybe "" ((++" ") . T.cons ':') pr
 -- | Packets that aren't reply packets
 cmdJoin :: Text -> Text -> Packet
 cmdJoin n channel = Packet host "JOIN" [channel]
+    where host = Just $ formatS "{}!{}@chat.deviantart.com" [n, n]
+
+cmdPrivmsg :: Text -> Text -> Text -> Packet
+cmdPrivmsg n channel text = Packet host "PRIVMSG" [channel, text]
     where host = Just $ formatS "{}!{}@chat.deviantart.com" [n, n]
 
 -- | Reply packets

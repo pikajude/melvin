@@ -91,13 +91,19 @@ auth h = hprint h "dAmnClient 0.3\nagent=melvin 0.1\n\0" ()
 -- | Big ol' list of callbacks!
 type Callback = Packet -> ClientSettings -> Consumer ClientP Packet SafeIO Bool
 
+type RecvCallback = Packet -> Callback
+
 responses :: M.Map Text Callback
 responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        , ("login", res_login)
                        , ("join", res_join)
                        , ("property", res_property)
+                       , ("recv", res_recv)
                        , ("disconnect", res_disconnect)
                        ]
+
+recv_responses :: M.Map Text RecvCallback
+recv_responses = M.fromList [ ("msg", res_recv_msg) ]
 
 res_dAmnServer :: Callback
 res_dAmnServer _ st = do
@@ -195,5 +201,21 @@ res_disconnect Packet { pktArgs = args } st = do
         n -> do
             writeClient $ rplNotify user $ "Disconnected: " ++ n
             throw $ ServerDisconnect n
+
+res_recv :: Callback
+res_recv pk st = case pk ^. pktSubpacketL of
+    Nothing -> logError (formatS "Received an empty recv packet: {}" [show pk]) >> return True
+    Just spk -> case M.lookup (pktCommand spk) recv_responses of
+                    Nothing -> logError (formatS "Unhandled recv packet: {}" [show spk]) >> return True
+                    Just c -> c pk spk st
+
+res_recv_msg :: RecvCallback
+res_recv_msg Packet { pktParameter = p }
+             Packet { pktArgs = args
+                    , pktBody = b
+                    } _st = do
+    channel <- toChannel $ fromJust p
+    writeClient $ cmdPrivmsg (args ^. ix "from") channel (T.cons ':' $ b ^. _Just)
+    return True
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}

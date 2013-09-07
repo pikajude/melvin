@@ -1,6 +1,7 @@
 module Melvin.Damn.Actions (
   login,
   join,
+  msg,
   disconnect
 ) where
 
@@ -23,6 +24,13 @@ join :: Chatroom -> ClientP a' a b' b SafeIO Packet
 join r = do
     room <- render r
     return $ Packet "join" (Just room) mempty Nothing
+
+msg :: Chatroom -> Text -> ClientP a' a b' b SafeIO Packet
+msg c m = do
+    room <- render c
+    let subpkt = Packet "msg" (Just "main") mempty (Just m)
+        parent = Packet "send" (Just room) mempty Nothing & pktSubpacketL ?~ subpkt
+    return parent
 
 disconnect :: Packet
 disconnect = Packet "disconnect" Nothing mempty Nothing
