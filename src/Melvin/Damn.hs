@@ -64,13 +64,15 @@ packetStream mv () = bracket id
         isClosed <- tryIO $ hIsClosed h
         when (isEOF || isClosed) $ throw (ServerDisconnect "socket closed")
         line <- tryIO $ hGetTillNull h
-        logWarning $ show line
+        logWarning $ show $ cleanup line
         case parse $ cleanup line of
             Left err -> throw $ ServerNoParse err line
             Right pk -> do
                 respond pk
                 f)
-    where cleanup m = fromMaybe m $ T.stripSuffix "\n" m
+    where cleanup m = case T.stripSuffix "\n" m of
+                         Nothing -> m
+                         Just s -> cleanup s
 
 responder :: () -> Consumer ClientP Packet SafeIO ()
 responder () = handle handler $ fix $ \f -> do
@@ -178,7 +180,9 @@ res_property Packet { pktParameter = p
 
         setMembers c b = do
             let chat = toChatroom c ^?! _Just
-            pcs <- getsState (\s -> s ^. privclasses ^?! ix chat)
+            pcs <- if T.head c == '&'
+                       then return mempty
+                       else getsState (\s -> s ^. privclasses ^?! ix chat)
             let users_ = foldr (toUser pcs) M.empty $ T.splitOn "\n\n" b
             modifyState (users . at chat ?~ users_)
 
@@ -191,7 +195,7 @@ res_property Packet { pktParameter = p
             where (header:as) = T.splitOn "\n" text
                   uname = last $ T.splitOn " " header
                   attrs = map (second T.tail . T.breakOn "=") as
-                  g k = fromJust $ lookup k attrs
+                  g k = lookup k attrs ^. _Just
 
 res_disconnect :: Callback
 res_disconnect Packet { pktArgs = args } st = do

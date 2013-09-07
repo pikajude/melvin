@@ -54,7 +54,7 @@ responder () = handle handler $ fix $ \f -> do
 type Callback = Packet -> ClientSettings -> Consumer ClientP Packet SafeIO Bool
 
 responses :: M.Map Text Callback
-responses = M.fromList [ ("PING", res_ping)
+responses = M.fromList [ ("PONG", res_pong)
                        , ("QUIT", res_quit)
                        , ("USER", \_ _ -> return True)
                        , ("MODE", res_mode)
@@ -62,9 +62,9 @@ responses = M.fromList [ ("PING", res_ping)
                        , ("PRIVMSG", res_privmsg)
                        ]
 
-res_ping :: Callback
-res_ping Packet { pktArguments = a } _ = do
-    writeClient $ Packet Nothing "PONG" a
+res_pong :: Callback
+res_pong Packet { pktArguments = a } _ = do
+    writeClient $ Packet Nothing "PING" a
     return True
 
 res_quit :: Callback

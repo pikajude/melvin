@@ -42,7 +42,7 @@ toChannel text
     | otherwise = do
         me <- liftP $ gets (view username)
         let usernames = T.splitOn ":" (T.drop 6 text)
-        return . fromJust $ find (/= me) usernames
+        return . T.cons '&' . fromJust $ find (/= me) usernames
 
 fromChatroom :: Text -> ClientP a' a b' b SafeIO Text
 fromChatroom = toChannel

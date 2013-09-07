@@ -91,7 +91,7 @@ mkPrivclass n t = Privclass n t (toSymbol n)
 
 data User = User
         { userMember    :: Text
-        , userPrivclass :: Privclass
+        , userPrivclass :: Maybe Privclass
         , userIcon      :: Int
         , userSymbol    :: Char
         , userRealname  :: Text
@@ -99,15 +99,16 @@ data User = User
         } deriving (Eq, Ord, Show)
 
 mkUser :: Map Text Privclass -> Text -> Text -> Int -> Char -> Text -> Text -> User
-mkUser ps m p = User m (ps ^?! ix p)
+mkUser ps m p = User m (ps ^? ix p)
 
 renderUser :: User -> Text
 renderUser User { userMember = m, userPrivclass = pc } =
-    case pcSymbol pc of
-        None    -> m
-        Voice   -> cons '+' m
-        Op      -> cons '@' m
-        Founder -> cons '~' m
+    case pcSymbol <$> pc of
+        Nothing      -> m
+        Just None    -> m
+        Just Voice   -> cons '+' m
+        Just Op      -> cons '@' m
+        Just Founder -> cons '~' m
 
 data ClientState = ClientState
         { _loggedIn    :: Bool
