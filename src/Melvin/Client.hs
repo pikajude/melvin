@@ -11,6 +11,7 @@ import           Control.Proxy.Trans.State
 import qualified Data.Map as M
 import           Data.Maybe
 import qualified Data.Set as S
+import qualified Data.Text as T
 import           Melvin.Chatrooms
 import           Melvin.Client.Packet hiding (render)
 import qualified Melvin.Damn.Actions as Damn
@@ -93,7 +94,9 @@ res_privmsg Packet { pktArguments = (room:msg) } st = do
         Nothing -> writeClient $ errNoSuchChannel (st ^. username) room
         Just r -> case msg of
                       [] -> writeClient $ errNeedMoreParams (st ^. username)
-                      (m:_) -> writeServer =<< Damn.msg r m
+                      (m:_) -> case T.stripPrefix "\1ACTION " m of
+                                   Just ac -> writeServer =<< Damn.action r (T.init ac)
+                                   Nothing -> writeServer =<< Damn.msg r m
     return True
 res_privmsg _ st = writeClient (errNeedMoreParams (st ^. username)) >> return True
 

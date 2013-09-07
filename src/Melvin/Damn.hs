@@ -103,6 +103,7 @@ responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        , ("join", res_join)
                        , ("property", res_property)
                        , ("recv", res_recv)
+                       , ("send", res_send)
                        , ("disconnect", res_disconnect)
                        ]
 
@@ -205,6 +206,14 @@ res_property Packet { pktParameter = p
                   uname = last $ T.splitOn " " header
                   attrs = map (second T.tail . T.breakOn "=") as
                   g k = lookup k attrs ^. _Just
+
+res_send :: Callback
+res_send Packet { pktParameter = p
+                , pktArgs = args
+                } _ = do
+    channel <- toChannel $ p ^. _Just
+    writeClient $ cmdSendError channel (args ^. ix "e")
+    return True
 
 res_disconnect :: Callback
 res_disconnect Packet { pktArgs = args } st = do

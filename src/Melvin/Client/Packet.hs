@@ -9,6 +9,7 @@ module Melvin.Client.Packet (
   cmdDupPart,
   cmdPrivmsg,
   cmdPrivaction,
+  cmdSendError,
 
   rplMyInfo,
   rplNotify,
@@ -81,8 +82,10 @@ render (Packet pr c args) = maybe "" ((++" ") . T.cons ':') pr
 -- | Predefined formatted packets
 
 -- | Packets that aren't reply packets
-cmdJoin :: Text -> Text -> Packet
+cmdJoin, cmdSendError :: Text -> Text -> Packet
 cmdJoin n channel = Packet (hostOf n) "JOIN" [channel]
+cmdSendError channel err = Packet (Just "dAmn") "NOTICE"
+    [channel, formatS "Send error: {}" [err]]
 
 cmdPrivmsg, cmdPrivaction, cmdPart :: Text -> Text -> Text -> Packet
 cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG" [channel, text]
@@ -91,9 +94,9 @@ cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG" [channel, ac text]
 cmdPart n channel reason = Packet (hostOf n) "PART" [channel, reason]
 
 cmdDupJoin, cmdDupPart :: Text -> Text -> Int -> Packet
-cmdDupJoin n channel cnt = Packet hostname "NOTICE"
+cmdDupJoin n channel cnt = Packet (Just "dAmn") "NOTICE"
     [channel, formatS "{} has joined again (now joined {})" [n, readable cnt]]
-cmdDupPart n channel cnt = Packet hostname "NOTICE"
+cmdDupPart n channel cnt = Packet (Just "dAmn") "NOTICE"
     [channel, formatS "{} has left (now joined {})" [n, readable cnt]]
 
 readable :: (Eq a, Num a, Show a) => a -> Text
