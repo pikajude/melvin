@@ -29,7 +29,7 @@ executable melvin
                      , bytestring
                      , containers
                      , cprng-aes
-                     , damnpacket >= 0.1.1
+                     , damnpacket >= 0.1.2
                      , HTTP
                      , lens >= 3.9
                      , mtl
