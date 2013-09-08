@@ -14,7 +14,7 @@ import qualified Data.Text as T
 import           Melvin.Chatrooms hiding (render)
 import           Melvin.Client.Packet
 import           Melvin.Logger
-import           Melvin.Prelude hiding   (get, respond)
+import           Melvin.Prelude hiding   (get)
 import           Melvin.Token
 import           Melvin.Types            (Chatroom)
 
@@ -82,7 +82,7 @@ respond h text packet =
 
 getAuthInfo :: Handle -> AuthState (Maybe (Username, Text, S.Set Chatroom))
 getAuthInfo h = fix $ \f -> do
-    line <- io $ hGetLine h
+    line <- liftIO $ hGetLine h
     logInfoIO line
     respond h =<< pktCommand $ parse line
     ac <- get
@@ -90,7 +90,7 @@ getAuthInfo h = fix $ \f -> do
         AuthClient _ (Just u) (Just p) js -> do
             uname <- use $ acUsername . _Just
             write h . render $ rplNotify uname "Fetching token..."
-            io $ fmap (fmap (uname, , js)) $ getToken u p
+            liftIO $ fmap (fmap (uname, , js)) $ getToken u p
         _ -> f
 
 authFailure :: Handle -> AuthState ()
@@ -107,4 +107,4 @@ authSuccess h = do
 write :: MonadIO m => Handle -> Text -> m ()
 write h s = do
     logInfoIO $ fromMaybe s $ T.stripSuffix "\r\n" s
-    io $ hPutStr h s
+    liftIO $ hPutStr h s

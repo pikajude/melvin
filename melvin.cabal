@@ -36,8 +36,8 @@ executable melvin
                      , network
                      , old-locale
                      , optparse-applicative == 0.5.*
-                     , pipes-safe
-                     , pipes
+                     , pipes >= 4.0
+                     , pipes-safe >= 2.0
                      , rex
                      , text
                      , text-format

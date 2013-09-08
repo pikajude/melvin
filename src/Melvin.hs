@@ -14,7 +14,6 @@ import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.Fix
-import Control.Proxy
 import Data.Set
 import Melvin.Client as Client
 import Melvin.Damn as Damn

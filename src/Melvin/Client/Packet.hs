@@ -3,6 +3,7 @@ module Melvin.Client.Packet (
   parse,
   render,
 
+  cmdPong,
   cmdJoin,
   cmdDupJoin,
   cmdPart,
@@ -82,6 +83,9 @@ render (Packet pr c args) = maybe "" ((++" ") . T.cons ':') pr
 -- | Predefined formatted packets
 
 -- | Packets that aren't reply packets
+cmdPong :: [Text] -> Packet
+cmdPong args = Packet Nothing "PONG" args
+
 cmdJoin, cmdSendError :: Text -> Text -> Packet
 cmdJoin n channel = Packet (hostOf n) "JOIN" [channel]
 cmdSendError channel err = Packet (Just "dAmn") "NOTICE"

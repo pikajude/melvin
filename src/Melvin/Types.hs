@@ -44,28 +44,26 @@ module Melvin.Types (
   privclasses,
   users,
 
-  modifyState,
   getState,
   getsState,
+  modifyState,
   putState,
 
-  ClientP
+  ClientT
 ) where
 
 import           Control.Arrow
 import           Control.Concurrent
 import           Control.Concurrent.Async
 import qualified Control.Exception as E
-import           Control.Proxy
-import           Control.Proxy.Safe
-import           Control.Proxy.Trans.State
-import           Data.Map                  (Map)
+import           Data.Map                 (Map)
 import           Data.Set
 import           Data.Text
 import           Melvin.Client.Packet
 import           Melvin.Exception
 import           Melvin.Logger
-import           Melvin.Prelude hiding     (cons)
+import           Melvin.Prelude hiding    (cons)
+import           Pipes.Safe
 import qualified Text.Damn.Packet as D
 
 data Chatroom =
@@ -139,12 +137,12 @@ data ClientSettings = ClientSettings
 
 makeLenses ''ClientSettings
 
-type ClientP = ExceptionP (StateP ClientSettings ProxyFast)
+type ClientT = SafeT (StateT ClientSettings IO)
 
-writeClient :: Packet -> ClientP a' a b' b SafeIO ()
+writeClient :: Packet -> ClientT ()
 writeClient text = do
-    (mv, h) <- liftP $ gets (view clientWriteLock &&& view clientHandle)
-    tryIO $ E.bracket_
+    (mv, h) <- lift $ gets (view clientWriteLock &&& view clientHandle)
+    liftIO $ E.bracket_
         (takeMVar mv)
         (putMVar mv ())
         ((hPutStr h r >> logInfoIO r) `E.catch` fallback)
@@ -153,10 +151,10 @@ writeClient text = do
             E.throw $ ClientSocketErr e
           r = render text
 
-writeServer :: D.Packet -> ClientP a' a b' b SafeIO ()
+writeServer :: D.Packet -> ClientT ()
 writeServer text = do
-    (mv, h) <- liftP $ gets (view serverWriteLock &&& view serverMVar)
-    tryIO $ E.bracket
+    (mv, h) <- lift $ gets (view serverWriteLock &&& view serverMVar)
+    liftIO $ E.bracket
         (takeMVar mv >> readMVar h)
         (\_ -> putMVar mv ())
         (\hndl -> (hPutStr hndl (D.render text ++ "\n\0") >> logInfoIO (show text)) `E.catch` fallback)
@@ -164,40 +162,40 @@ writeServer text = do
             logWarningIO $ "(write failed) " ++ show text
             E.throw $ ServerSocketErr e
 
-killClient :: ClientP a' a b' b SafeIO ()
+killClient :: ClientT ()
 killClient = do
-    ct <- liftP $ gets (view clientThreadId)
-    tid <- tryIO $ tryTakeMVar ct
+    ct <- lift $ use clientThreadId
+    tid <- liftIO $ tryTakeMVar ct
     case tid of
         Nothing -> logWarning "Client thread is already dead."
-        Just t -> tryIO $ cancel t
+        Just t -> liftIO $ cancel t
 
-killServer :: ClientP a' a b' b SafeIO ()
+killServer :: ClientT ()
 killServer = do
-    ct <- liftP $ gets (view serverThreadId)
-    tid <- tryIO $ tryTakeMVar ct
+    ct <- lift $ use serverThreadId
+    tid <- liftIO $ tryTakeMVar ct
     case tid of
         Nothing -> logWarning "Server thread is already dead."
-        Just t -> tryIO $ cancel t
+        Just t -> liftIO $ cancel t
 
-modifyState :: (ClientState -> ClientState) -> ClientP a' a b' b SafeIO ()
+modifyState :: (ClientState -> ClientState) -> ClientT ()
 modifyState f = do
-    cs <- liftP $ gets (view clientState)
-    tryIO $ modifyMVar_ cs (return . f)
+    cs <- lift $ use clientState
+    liftIO $ modifyMVar_ cs (return . f)
 
-getState :: ClientP a' a b' b SafeIO ClientState
+getState :: ClientT ClientState
 getState = do
-    cs <- liftP $ gets (view clientState)
-    tryIO $ readMVar cs
+    cs <- lift $ use clientState
+    liftIO $ readMVar cs
 
-getsState :: (ClientState -> a0) -> ClientP a' a b' b SafeIO a0
+getsState :: (ClientState -> a) -> ClientT a
 getsState f = do
-    cs <- liftP $ gets (view clientState)
-    st <- tryIO $ readMVar cs
+    cs <- lift $ use clientState
+    st <- liftIO $ readMVar cs
     return $ f st
 
-putState :: ClientState -> ClientP a' a b' b SafeIO ()
+putState :: ClientState -> ClientT ()
 putState v = do
-    cs <- liftP $ gets (view clientState)
-    _ <- tryIO $ tryTakeMVar cs
-    tryIO $ putMVar cs v
+    cs <- lift $ use clientState
+    _ <- liftIO $ tryTakeMVar cs
+    liftIO $ putMVar cs v

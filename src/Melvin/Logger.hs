@@ -16,13 +16,12 @@ module Melvin.Logger (
 import           Control.Concurrent
 import           Control.Monad
 import           Control.Monad.IO.Class
-import           Control.Proxy
-import           Control.Proxy.Safe
 import           Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import           Data.Time
 import           Melvin.Prelude hiding  (log)
+import           Pipes.Safe
 import           System.Locale
 import           System.IO
 import           System.IO.Unsafe
@@ -38,18 +37,18 @@ startLogger = do
 
 data Level = Info | Warning | Error
 
-logInfo, logWarning, logError :: Proxy p => Text -> ExceptionP p a' a b' b SafeIO ()
-logInfo = log Info
+logInfo, logWarning, logError :: Text -> SafeT (StateT s IO) ()
+logInfo    = log Info
 logWarning = log Warning
-logError = log Error
+logError   = log Error
 
 logInfoIO, logWarningIO, logErrorIO :: MonadIO m => Text -> m ()
 logInfoIO = logIO Info
 logWarningIO = logIO Warning
 logErrorIO = logIO Error
 
-log :: Proxy p => Level -> Text -> ExceptionP p a' a b' b SafeIO ()
-log = logWith tryIO
+log :: Level -> Text -> SafeT (StateT s IO) ()
+log = logWith (lift . lift)
 
 logIO :: MonadIO m => Level -> Text -> m ()
 logIO = logWith liftIO

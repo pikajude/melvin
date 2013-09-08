@@ -5,9 +5,6 @@ module Melvin.Client (
 
 import           Control.Monad
 import           Control.Monad.Fix
-import           Control.Proxy
-import           Control.Proxy.Safe
-import           Control.Proxy.Trans.State
 import qualified Data.Map as M
 import           Data.Maybe
 import qualified Data.Set as S
@@ -18,44 +15,46 @@ import qualified Melvin.Damn.Actions as Damn
 import           Melvin.Logger
 import           Melvin.Prelude
 import           Melvin.Types
+import           Pipes.Safe
 
-handler :: SomeException -> ClientP a' a b' b SafeIO ()
+handler :: SomeException -> ClientT ()
 handler ex = do
     logError $ show ex
     killServer
-    throw ex
+    throwM ex
 
-packetStream :: Handle -> () -> Producer ClientP Packet SafeIO ()
-packetStream hndl () = bracket id
+packetStream :: Handle -> Producer Packet ClientT ()
+packetStream hndl = bracket
     (return hndl)
-    hClose
-    (\h -> handle handler $ fix $ \f -> do
-        isEOF <- tryIO $ hIsEOF h
-        isClosed <- tryIO $ hIsClosed h
+    (liftIO . hClose)
+    (\h -> handle (lift . handler) $ fix $ \f -> do
+        isEOF <- liftIO $ hIsEOF h
+        isClosed <- liftIO $ hIsClosed h
         unless (isEOF || isClosed) $ do
-            line <- tryIO $ hGetLine h
-            logInfo line
-            respond $ parse line
+            line <- liftIO $ hGetLine h
+            lift $ logInfo line
+            yield $ parse line
             f)
 
-responder :: () -> Consumer ClientP Packet SafeIO ()
-responder () = handle handler $ fix $ \f -> do
-    p <- request ()
+responder :: Consumer Packet ClientT ()
+responder = handle (lift . handler) $ fix $ \f -> do
+    p <- await
     continue <- case M.lookup (pktCommand p) responses of
         Nothing -> do
-            logInfo $ formatS "Unhandled packet from client: {}" [show p]
+            lift . logInfo $ formatS "Unhandled packet from client: {}" [show p]
             return False
         Just callback -> do
-            st <- liftP get
-            callback p st
+            st <- lift $ lift get
+            lift $ callback p st
     when continue f
 
 
 -- | Big ol' list of callbacks!
-type Callback = Packet -> ClientSettings -> Consumer ClientP Packet SafeIO Bool
+type Callback = Packet -> ClientSettings -> ClientT Bool
 
 responses :: M.Map Text Callback
 responses = M.fromList [ ("QUIT", res_quit)
+                       , ("PING", res_ping)
                        , ("PONG", \_ _ -> return True)
                        , ("USER", \_ _ -> return True)
                        , ("MODE", res_mode)
@@ -68,6 +67,11 @@ res_quit _ st = do
     logInfo $ formatS "Client #{} quit cleanly." [clientNumber st]
     writeServer Damn.disconnect
     return False
+
+res_ping :: Callback
+res_ping Packet { pktArguments = args } _ = do
+    writeClient $ cmdPong args
+    return True
 
 res_mode :: Callback
 res_mode p _ = do
