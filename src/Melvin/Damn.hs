@@ -1,5 +1,3 @@
-{-# LANGUAGE ImplicitParams #-}
-
 module Melvin.Damn (
   packetStream,
   responder
@@ -159,7 +157,7 @@ res_property Packet { pktParameter = p
         "topic" -> case body of
             Nothing -> writeClient $ rplNoTopic user channel "No topic is set"
             Just b -> do
-                writeClient $ rplTopic user channel b
+                writeClient $ rplTopic user channel (T.replace "\n" " | " $ delump b)
                 writeClient $ rplTopicWhoTime user channel (args ^. ix "by") (args ^. ix "ts")
 
         "title" -> logInfo $ formatS "Received title for {}: {}" [channel, body ^. _Just]
