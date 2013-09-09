@@ -1,8 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module Melvin.Damn.Tablumps (
-  delump,
-  lump
+  delump
 ) where
 
 import           Control.Applicative
@@ -58,7 +57,7 @@ render' :: [Message] -> Text
 render' (S ms:ns) = strike (render' ms) ++ render' ns
 render' (A dest _ contents:ns) = T.concat [render' contents, " <", dest, ">"] ++ render' ns
 render' (Dev c n:ns) = T.cons c n ++ render' ns
-render' (Chunk t:ns) = T.cons t $ render' ns
+render' (Chunk t:ns) = T.cons t $! render' ns
 render' [] = T.empty
 
 strike :: Text -> Text
