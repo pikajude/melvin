@@ -24,6 +24,7 @@ import Melvin.Prelude hiding    (index, set)
 import Melvin.Options
 import Melvin.Types
 import Network
+import System.IO
 import System.Mem
 
 doAMelvin :: Options -> IO ()
@@ -41,6 +42,7 @@ doAMelvin Options { optionPort = p
 runClientPair :: Integer -> (Handle, String, t) -> IO ()
 runClientPair index (h, host, _) = do
     logInfoIO $ "Client #" ++ show index ++ " has connected from " ++ pack host
+    hSetEncoding h utf8
     tokpair <- authenticate h
     case tokpair of
         Left err -> do

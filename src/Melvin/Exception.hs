@@ -26,6 +26,9 @@ data MelvinException =
         -- | Authentication with dAmn failed, despite the fact that dAmn
         -- returned this authtoken. Weird.
       | AuthenticationFailed Text
+        -- | We got an invalid tablump, which probably means the parser is
+        -- wrong.
+      | BadTablumps String Text
       deriving Typeable
 
 instance Exception MelvinException
@@ -37,6 +40,7 @@ instance Show MelvinException where
     show (ServerDisconnect e) = "lost connection to server: " ++ unpack e
     show ServerNoParse{..} = "received a bad packet from the server"
     show ClientNoParse{..} = "received a bad packet from the client"
+    show (BadTablumps e _) = "failed parsing tablumps: " ++ e
 
 isRetryable :: SomeException -> Bool
 -- isRetryable e | Just (ServerDisconnect _) <- fromException e = True
