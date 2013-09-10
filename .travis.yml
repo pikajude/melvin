@@ -6,5 +6,8 @@ install:
   - cabal configure $mode
   - cabal build
 
+script:
+  - hlint -c . --ignore="Parse error" && cabal test
+
 env:
   - mode="--enable-tests -ferror" script="cabal test --show-details=always"
