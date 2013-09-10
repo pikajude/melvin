@@ -9,6 +9,7 @@ module Melvin.Damn.Actions (
 
 import Data.Map                (fromList)
 import Melvin.Chatrooms
+import Melvin.Damn.HTML
 import Melvin.Prelude
 import Melvin.Types hiding     (token)
 import Text.Damn.Packet hiding (render)
@@ -32,14 +33,14 @@ join r = do
 msg :: Chatroom -> Text -> ClientT Packet
 msg c m = do
     room <- render c
-    let subpkt = Packet "msg" (Just "main") mempty (Just m)
+    let subpkt = Packet "msg" (Just "main") mempty (Just $ escape m)
         parent = Packet "send" (Just room) mempty Nothing & pktSubpacketL ?~ subpkt
     return parent
 
 action :: Chatroom -> Text -> ClientT Packet
 action c m = do
     room <- render c
-    let subpkt = Packet "action" (Just "main") mempty (Just m)
+    let subpkt = Packet "action" (Just "main") mempty (Just $ escape m)
         parent = Packet "send" (Just room) mempty Nothing & pktSubpacketL ?~ subpkt
     return parent
 

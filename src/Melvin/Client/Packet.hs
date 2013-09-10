@@ -31,6 +31,7 @@ import           Control.Monad
 import           Data.Attoparsec.Text hiding (parse)
 import           Data.Char
 import qualified Data.Text as T
+import           Melvin.Damn.HTML
 import           Melvin.Prelude hiding       (takeWhile)
 import qualified Prelude as P
 
@@ -92,10 +93,10 @@ cmdSendError channel err = Packet (Just "dAmn") "NOTICE"
     [channel, formatS "Send error: {}" [err]]
 
 cmdPrivmsg, cmdPrivaction, cmdPart :: Text -> Text -> Text -> Packet
-cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG" [channel, text]
-cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG" [channel, ac text]
+cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG" [channel, unescape text]
+cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG" [channel, ac $ unescape text]
     where ac m = "\1ACTION " ++ m ++ "\1"
-cmdPart n channel reason = Packet (hostOf n) "PART" [channel, reason]
+cmdPart n channel reason = Packet (hostOf n) "PART" [channel, unescape reason]
 
 cmdDupJoin, cmdDupPart :: Text -> Text -> Int -> Packet
 cmdDupJoin n channel cnt = Packet (Just "dAmn") "NOTICE"
