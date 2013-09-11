@@ -59,6 +59,7 @@ responses = M.fromList [ ("QUIT", res_quit)
                        , ("USER", \_ _ -> return True)
                        , ("MODE", res_mode)
                        , ("JOIN", res_join)
+                       , ("PART", res_part)
                        , ("PRIVMSG", res_privmsg)
                        ]
 
@@ -90,6 +91,15 @@ res_join Packet { pktArguments = a } st = do
                     if l
                        then writeServer =<< Damn.join c
                        else modifyState (joinList %~ S.insert c)
+    return True
+
+res_part :: Callback
+res_part Packet { pktArguments = a } st = do
+    case a of
+        [] -> writeClient $ errNeedMoreParams (st ^. username)
+        (room:_) -> case toChatroom room of
+            Nothing -> writeClient $ errNoSuchChannel (st ^. username) room
+            Just c -> writeServer =<< Damn.part c
     return True
 
 res_privmsg :: Callback

@@ -13,6 +13,7 @@ import           Melvin.Exception
 import           Melvin.Prelude hiding       (concatMap, cons, simple, takeWhile)
 
 data Message = S [Message] | A Text Text [Message] | Dev Char Text
+             | Code [Message]
              | Emote Text Text Text Text Text
              | Chunk Char
              deriving Show
@@ -31,10 +32,11 @@ simple = foldr ($!) ?? [
              ]
 
 lump :: Parser Message
-lump = foldr1 (<|>) [ lumpS, lumpA, lumpDev, lumpEmote
+lump = foldr1 (<|>) [ lumpS, lumpA, lumpDev, lumpEmote, lumpCode
                     , Chunk <$> anyChar ]
     where
         lumpS = fmap S $ string "&s\t" *> lazy lump (string "&/s\t")
+        lumpCode = fmap Code $ string "&code\t" *> lazy lump (string "&/code\t")
         arg = takeWhile (/= '\t') <* char '\t'
         lumpA = do
             string "&a\t"
@@ -62,6 +64,7 @@ render' :: [Message] -> Text
 render' (S ms:ns) = strike (render' ms) ++ render' ns
 render' (A dest _ contents:ns) = T.concat [render' contents, " <", dest, ">"] ++ render' ns
 render' (Dev c n:ns) = T.cons c n ++ render' ns
+render' (Code ms:ns) = render' ms ++ render' ns
 render' (Emote s _ _ _ _:ns) = s ++ render' ns
 render' (Chunk t:ns) = T.cons t $! render' ns
 render' [] = T.empty

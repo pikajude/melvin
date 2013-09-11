@@ -236,7 +236,7 @@ res_recv_msg Packet { pktParameter = p }
                     } _st = do
     channel <- toChannel $ fromJust p
     forM_ (T.splitOn "\n" . delump $ b ^. _Just) $ \line ->
-        writeClient $ cmdPrivmsg (args ^. ix "from") channel (T.cons ':' line)
+        writeClient $ cmdPrivmsg (args ^. ix "from") channel line
     return True
 
 res_recv_action :: RecvCallback

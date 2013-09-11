@@ -2,6 +2,7 @@ module Melvin.Damn.Actions (
   pong,
   login,
   join,
+  part,
   msg,
   action,
   disconnect
@@ -10,7 +11,7 @@ module Melvin.Damn.Actions (
 import Data.Map                (fromList)
 import Melvin.Chatrooms
 import Melvin.Damn.HTML
-import Melvin.Prelude
+import Melvin.Prelude hiding   (re)
 import Melvin.Types hiding     (token)
 import Text.Damn.Packet hiding (render)
 
@@ -29,6 +30,11 @@ join :: Chatroom -> ClientT Packet
 join r = do
     room <- render r
     return $ Packet "join" (Just room) mempty Nothing
+
+part :: Chatroom -> ClientT Packet
+part r = do
+    room <- render r
+    return $ Packet "part" (Just room) mempty Nothing
 
 msg :: Chatroom -> Text -> ClientT Packet
 msg c m = do
