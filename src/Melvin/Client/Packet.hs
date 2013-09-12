@@ -95,8 +95,8 @@ cmdSendError channel err = Packet (Just "dAmn") "NOTICE"
     [channel, formatS "Send error: {}" [err]]
 
 cmdPrivmsg, cmdPrivaction, cmdPart, cmdModeChange :: Text -> Text -> Text -> Packet
-cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG" [channel, T.cons ':' . unescape $ delump text]
-cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG" [channel, ac . unescape $ delump text]
+cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG" [channel, T.cons ':' $ unescape text]
+cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG" [channel, ac $ unescape text]
     where ac m = "\1ACTION " ++ m ++ "\1"
 cmdPart n channel reason = Packet (hostOf n) "PART" [channel, unescape $ delump reason]
 cmdModeChange channel u m = Packet (Just "dAmn") "MODE" [channel, T.cons '+' m, u]
