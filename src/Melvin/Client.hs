@@ -83,7 +83,7 @@ res_join :: Callback
 res_join Packet { pktArguments = a } st = do
     case a of
         [] -> writeClient $ errNeedMoreParams (st ^. username)
-        rooms -> forM_ rooms $ \r ->
+        (rooms:_) -> forM_ (T.splitOn "," rooms) $ \r ->
             case toChatroom r of
                 Nothing -> writeClient $ errNoSuchChannel (st ^. username) r
                 Just c -> do

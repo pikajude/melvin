@@ -21,7 +21,8 @@ lines :: Raw -> [Raw]
 lines m = map Raw . T.splitOn "\n" $ unRaw m
 
 data Message = S [Message] | A Text Text [Message] | Dev Char Text
-             | Code [Message] | Abbr Text [Message]
+             | Code [Message] | Abbr Text [Message] | Link Text (Maybe Text)
+             | Icon Text Text
              | Emote Text Text Text Text Text
              | Thumb Text Text Text Text Text Text
              | Chunk Char
@@ -41,13 +42,20 @@ simple = foldr ($!) ?? [
              ]
 
 lump :: Parser Message
-lump = foldr1 (<|>) [ lumpS, lumpA, lumpDev, lumpEmote, lumpCode
-                    , lumpAbbr, lumpThumb
+lump = foldr1 (<|>) [ lumpS, lumpA, lumpDev, lumpEmote, lumpCode, lumpLink
+                    , lumpAbbr, lumpThumb, lumpIcon
                     , Chunk <$> anyChar ]
     where
+        arg = takeWhile (/= '\t') <* char '\t'
         lumpS = fmap S $ string "&s\t" *> lazy lump (string "&/s\t")
         lumpCode = fmap Code $ string "&code\t" *> lazy lump (string "&/code\t")
-        arg = takeWhile (/= '\t') <* char '\t'
+        lumpLink = do
+            string "&link\t"
+            dest <- arg
+            m <- arg
+            if m == "&"
+                then return $ Link dest Nothing
+                else Link dest (Just m) <$ arg
         lumpA = do
             string "&a\t"
             dest <- arg
@@ -62,6 +70,9 @@ lump = foldr1 (<|>) [ lumpS, lumpA, lumpDev, lumpEmote, lumpCode
         lumpEmote = do
             string "&emote\t"
             Emote <$> arg <*> arg <*> arg <*> arg <*> arg
+        lumpIcon = do
+            string "&avatar\t"
+            Icon <$> arg <*> arg
         lumpAbbr = do
             string "&abbr\t"
             title <- arg
@@ -79,21 +90,26 @@ render t (Left s) = throw $ BadTablumps s t
 render _ (Right msgs) = render' msgs
 
 render' :: [Message] -> Text
-render' (S ms:ns) = strike (render' ms) ++ render' ns
+render' (S ms:ns)              = strike (render' ms) ++ render' ns
 render' (A dest _ contents:ns) = T.concat [render' contents, " <", dest, ">"] ++ render' ns
-render' (Dev c n:ns) = T.cons c n ++ render' ns
-render' (Code ms:ns) = render' ms ++ render' ns
-render' (Emote s _ _ _ _:ns) = s ++ render' ns
-render' (Chunk t:ns) = T.cons t $! render' ns
-render' (Abbr t ms:ns) | null ms && isChromacity t = render' ns
-render' (Abbr t ms:ns) = T.concat ["<abbr title='", t, "'>", render' ms, "</abbr>"] ++ render' ns
+render' (Dev c n:ns)           = T.cons c n ++ render' ns
+render' (Code ms:ns)           = render' ms ++ render' ns
+render' (Link s Nothing:ns)    = s ++ render' ns
+render' (Link s (Just t):ns)   = T.concat [s, " (", t, ")"] ++ render' ns
+render' (Emote s _ _ _ _:ns)   = s ++ render' ns
+render' (Abbr t ms:ns)
+   | null ms && isChromacity t = render' ns
+render' (Abbr t ms:ns)         = T.concat ["<abbr title='", t, "'>", render' ms, "</abbr>"] ++ render' ns
+render' (Icon t _:ns)          = T.concat [":icon", t, ":"] ++ render' ns
 render' (Thumb _ t _ _ _ _:ns) = T.concat ["[thumb: ", t, "]"] ++ render' ns
-render' [] = T.empty
+render' (Chunk t:ns)           = T.cons t $! render' ns
+render' []                     = T.empty
 
 isChromacity :: Text -> Bool
 isChromacity t = length items == 3
               && head items == "colors"
-              && all (T.all isHexDigit) (tail items)
+              && T.all isHexDigit (items !! 1)
+              && T.all isHexDigit (items !! 2)
     where items = T.splitOn ":" t
 
 strike :: Text -> Text

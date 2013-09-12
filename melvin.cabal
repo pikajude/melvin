@@ -40,7 +40,7 @@ executable melvin
                      , pipes-safe >= 2.0
                      , text
                      , text-format
-                     , time
+                     , thyme
                      , tls
                      , tls-extra
                      , transformers

@@ -19,7 +19,7 @@ import           Control.Monad.IO.Class
 import           Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import           Data.Time
+import           Data.Thyme
 import           Melvin.Prelude hiding  (log)
 import           Pipes.Safe
 import           System.Locale

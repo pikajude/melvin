@@ -95,8 +95,10 @@ cmdSendError channel err = Packet (Just "dAmn") "NOTICE"
     [channel, formatS "Send error: {}" [err]]
 
 cmdPrivmsg, cmdPrivaction :: Text -> Text -> Raw -> Packet
-cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG" [channel, T.cons ':' . unescape $ unRaw text]
-cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG" [channel, ac . unescape $ unRaw text]
+cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG"
+    [channel, T.cons ':' . bullets . unescape $ unRaw text]
+cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG"
+    [channel, ac . bullets . unescape $ unRaw text]
     where ac m = "\1ACTION " ++ m ++ "\1"
 
 cmdPart, cmdModeChange :: Text -> Text -> Text -> Packet
@@ -123,7 +125,7 @@ rplNotify n msg = Packet hostname "273" [n, msg]
 
 rplNoTopic, rplTopic :: Text -> Text -> Text -> Packet
 rplNoTopic user channel reason = Packet hostname "331" [user, channel, reason]
-rplTopic user channel topic = Packet hostname "332" [user, channel, topic]
+rplTopic user channel topic = Packet hostname "332" [user, channel, bullets topic]
 
 rplTopicWhoTime :: Text -> Text -> Text -> Text -> Packet
 rplTopicWhoTime user channel setter time =
@@ -148,3 +150,15 @@ hostname = Just "chat.deviantart.com"
 
 hostOf :: Text -> Maybe Text
 hostOf = Just . formatS "{}!{}@chat.deviantart.com" . join (,)
+
+bullets :: Text -> Text
+bullets t = T.replace ":bulletred:" "\ETX5●\SI"
+          . T.replace ":bulletorange:" "\ETX4●\SI"
+          . T.replace ":bulletyellow:" "\ETX7●\SI"
+          . T.replace ":bulletgreen:" "\ETX3●\SI"
+          . T.replace ":bulletblue:" "\ETX2●\SI"
+          . T.replace ":bulletpurple:" "\ETX13●\SI"
+          . T.replace ":bulletpink:" "\ETX6●\SI"
+          . T.replace ":bulletwhite:" "\ETX0●\SI"
+          . T.replace ":bulletblack:" "\ETX1●\SI"
+          $ t
