@@ -1,7 +1,10 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module Melvin.Damn.Tablumps (
-  delump
+  delump,
+  Raw,
+  unRaw,
+  lines
 ) where
 
 import           Control.Applicative
@@ -12,6 +15,11 @@ import qualified Data.Text as T
 import           Melvin.Exception
 import           Melvin.Prelude hiding       (concatMap, cons, simple, takeWhile)
 
+newtype Raw = Raw { unRaw :: Text }
+
+lines :: Raw -> [Raw]
+lines m = map Raw . T.splitOn "\n" $ unRaw m
+
 data Message = S [Message] | A Text Text [Message] | Dev Char Text
              | Code [Message] | Abbr Text [Message]
              | Emote Text Text Text Text Text
@@ -19,8 +27,8 @@ data Message = S [Message] | A Text Text [Message] | Dev Char Text
              | Chunk Char
              deriving Show
 
-delump :: Text -> Text
-delump t = render t . parseOnly (many1 lump) $ simple t
+delump :: Text -> Raw
+delump t = Raw . render t . parseOnly (many1 lump) $ simple t
 
 simple :: Text -> Text
 simple = foldr ($!) ?? [

@@ -157,7 +157,7 @@ res_property Packet { pktParameter = p
         "topic" -> case body of
             Nothing -> writeClient $ rplNoTopic user channel "No topic is set"
             Just b -> do
-                writeClient $ rplTopic user channel (T.replace "\n" " | " $ delump b)
+                writeClient $ rplTopic user channel (T.replace "\n" " | " . unRaw $ delump b)
                 writeClient $ rplTopicWhoTime user channel (args ^. ix "by") (args ^. ix "ts")
 
         "title" -> logInfo $ formatS "Received title for {}: {}" [channel, body ^. _Just]
@@ -235,7 +235,7 @@ res_recv_msg Packet { pktParameter = p }
                     , pktBody = b
                     } _st = do
     channel <- toChannel $ fromJust p
-    forM_ (T.splitOn "\n" . delump $ b ^. _Just) $ \line ->
+    forM_ (lines . delump $ b ^. _Just) $ \line ->
         writeClient $ cmdPrivmsg (args ^. ix "from") channel line
     return True
 
@@ -245,7 +245,7 @@ res_recv_action Packet { pktParameter = p }
                        , pktBody = b
                        } _st = do
     channel <- toChannel $ fromJust p
-    forM_ (T.splitOn "\n" . delump $ b ^. _Just) $ \line ->
+    forM_ (lines . delump $ b ^. _Just) $ \line ->
         writeClient $ cmdPrivaction (args ^. ix "from") channel line
     return True
 

@@ -40,9 +40,9 @@ import           Data.Text.Lazy                  (toStrict)
 import           Pipes as X hiding               (each, (<~))
 import           Pipes.Safe
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 704
-import           Prelude as X hiding             ((++), catch, putStrLn, print, show)
+import           Prelude as X hiding             ((++), catch, putStrLn, print, show, lines)
 #else
-import           Prelude as X hiding             ((++), putStrLn, print, show)
+import           Prelude as X hiding             ((++), putStrLn, print, show, lines)
 #endif
 import qualified Prelude as P
 import           System.IO as X                  (Handle, hClose, hFlush, hIsClosed, hIsEOF)
