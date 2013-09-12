@@ -8,6 +8,7 @@ module Melvin.Client.Packet (
   cmdDupJoin,
   cmdPart,
   cmdDupPart,
+  cmdModeChange,
   cmdPrivmsg,
   cmdPrivaction,
   cmdSendError,
@@ -93,11 +94,12 @@ cmdJoin n channel = Packet (hostOf n) "JOIN" [channel]
 cmdSendError channel err = Packet (Just "dAmn") "NOTICE"
     [channel, formatS "Send error: {}" [err]]
 
-cmdPrivmsg, cmdPrivaction, cmdPart :: Text -> Text -> Text -> Packet
-cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG" [channel, unescape $ delump text]
+cmdPrivmsg, cmdPrivaction, cmdPart, cmdModeChange :: Text -> Text -> Text -> Packet
+cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG" [channel, T.cons ':' . unescape $ delump text]
 cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG" [channel, ac . unescape $ delump text]
     where ac m = "\1ACTION " ++ m ++ "\1"
 cmdPart n channel reason = Packet (hostOf n) "PART" [channel, unescape $ delump reason]
+cmdModeChange channel u m = Packet (Just "dAmn") "MODE" [channel, T.cons '+' m, u]
 
 cmdDupJoin, cmdDupPart :: Text -> Text -> Int -> Packet
 cmdDupJoin n channel cnt = Packet (Just "dAmn") "NOTICE"

@@ -262,6 +262,9 @@ res_recv_join Packet { pktParameter = p }
             user <- buildUser (u ^. _Just) (b ^. _Just) room
             modifyState (users . ix room %~ M.insert (u ^. _Just) user)
             writeClient $ cmdJoin (u ^. _Just) channel
+            case asMode =<< userPrivclass user of
+                Just m -> writeClient $ cmdModeChange channel (u ^. _Just) m
+                Nothing -> return ()
         Just r -> do
             modifyState (users . ix room . ix (u ^. _Just) . userJoinCount +~ 1)
             writeClient $ cmdDupJoin (u ^. _Just) channel (r ^. userJoinCount + 1)

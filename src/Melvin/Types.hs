@@ -11,6 +11,7 @@ module Melvin.Types (
   pcTitle,
   pcSymbol,
   mkPrivclass,
+  asMode,
 
   User,
   userMember,
@@ -111,6 +112,13 @@ renderUser User { userMember = m, userPrivclass = pc } =
         Just Voice   -> cons '+' m
         Just Op      -> cons '@' m
         Just Founder -> cons '~' m
+
+asMode :: Privclass -> Maybe Text
+asMode pc = case pcSymbol pc of
+                None -> Nothing
+                Voice -> Just "v"
+                Op -> Just "o"
+                Founder -> Just "q"
 
 data ClientState = ClientState
         { _loggedIn    :: Bool

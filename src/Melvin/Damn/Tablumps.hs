@@ -13,8 +13,9 @@ import           Melvin.Exception
 import           Melvin.Prelude hiding       (concatMap, cons, simple, takeWhile)
 
 data Message = S [Message] | A Text Text [Message] | Dev Char Text
-             | Code [Message]
+             | Code [Message] | Abbr Text [Message]
              | Emote Text Text Text Text Text
+             | Thumb Text Text Text Text Text Text
              | Chunk Char
              deriving Show
 
@@ -33,6 +34,7 @@ simple = foldr ($!) ?? [
 
 lump :: Parser Message
 lump = foldr1 (<|>) [ lumpS, lumpA, lumpDev, lumpEmote, lumpCode
+                    , lumpAbbr, lumpThumb
                     , Chunk <$> anyChar ]
     where
         lumpS = fmap S $ string "&s\t" *> lazy lump (string "&/s\t")
@@ -52,6 +54,14 @@ lump = foldr1 (<|>) [ lumpS, lumpA, lumpDev, lumpEmote, lumpCode
         lumpEmote = do
             string "&emote\t"
             Emote <$> arg <*> arg <*> arg <*> arg <*> arg
+        lumpAbbr = do
+            string "&abbr\t"
+            title <- arg
+            contents <- lazy lump (string "&/abbr\t")
+            return $ Abbr title contents
+        lumpThumb = do
+            string "&thumb\t"
+            Thumb <$> arg <*> arg <*> arg <*> arg <*> arg <*> arg
 
 lazy :: Alternative f => f a -> f b -> f [a]
 lazy a b = ([] <$ b) <|> ((:) <$> a <*> lazy a b)
@@ -67,7 +77,16 @@ render' (Dev c n:ns) = T.cons c n ++ render' ns
 render' (Code ms:ns) = render' ms ++ render' ns
 render' (Emote s _ _ _ _:ns) = s ++ render' ns
 render' (Chunk t:ns) = T.cons t $! render' ns
+render' (Abbr t ms:ns) | null ms && isChromacity t = render' ns
+render' (Abbr t ms:ns) = T.concat ["<abbr title='", t, "'>", render' ms, "</abbr>"] ++ render' ns
+render' (Thumb _ t _ _ _ _:ns) = T.concat ["[thumb: ", t, "]"] ++ render' ns
 render' [] = T.empty
+
+isChromacity :: Text -> Bool
+isChromacity t = length items == 3
+              && head items == "colors"
+              && all (T.all isHexDigit) (tail items)
+    where items = T.splitOn ":" t
 
 strike :: Text -> Text
 strike text = T.concatMap ?? text $ \ch ->
