@@ -36,6 +36,7 @@ executable melvin
                      , network
                      , old-locale
                      , optparse-applicative == 0.5.*
+                     , parsec
                      , pipes >= 4.0
                      , pipes-safe >= 2.0
                      , text

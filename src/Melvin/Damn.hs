@@ -99,6 +99,7 @@ responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        , ("ping", res_ping)
                        , ("login", res_login)
                        , ("join", res_join)
+                       , ("part", res_part)
                        , ("property", res_property)
                        , ("recv", res_recv)
                        , ("send", res_send)
@@ -144,6 +145,16 @@ res_join Packet { pktParameter = p
     case args ^. ix "e" of
         "ok" -> writeClient $ cmdJoin user channel
         "not privileged" -> writeClient $ errBannedFromChan user channel
+        _ -> return ()
+    return True
+
+res_part :: Callback
+res_part Packet { pktParameter = p
+                , pktArgs = args } st = do
+    let user = st ^. username
+    channel <- toChannel $ fromJust p
+    case args ^. ix "e" of
+        "ok" -> writeClient $ cmdPart user channel "leaving"
         _ -> return ()
     return True
 
