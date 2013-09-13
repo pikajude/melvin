@@ -127,7 +127,7 @@ render' (Iframe src _ _:ns)    = T.concat ["<iframe src='", src, "' />"] ++ rend
 render' (Thumb _ t _ _ _ _:ns) = T.concat ["[thumb: ", t, "]"] ++ render' ns
 render' (Ul ms:ns)             = "\n" ++ render' ms ++ render' ns
 render' (Ol ms:ns)             = "\n" ++ render' ms ++ render' ns
-render' (Li n ms:ns)           = (T.pack $ replicate ((n - 1) * 2) ' ')
+render' (Li n ms:ns)           = T.pack (replicate ((n - 1) * 2) ' ')
                               ++ bull ++ render' ms ++ nl ++ render' ns
     where nl = case ns of
                    (Li _ _:_) -> "\n"
