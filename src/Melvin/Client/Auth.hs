@@ -1,6 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables, TemplateHaskell, TupleSections #-}
 
 module Melvin.Client.Auth (
     authenticate

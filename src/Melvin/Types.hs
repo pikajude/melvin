@@ -1,6 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts, ScopedTypeVariables, TemplateHaskell #-}
 
 module Melvin.Types (
   Chatroom(..),

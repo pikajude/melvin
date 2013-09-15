@@ -1,5 +1,4 @@
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE NoMonomorphismRestriction, RankNTypes #-}
 
 module Melvin.Logger (
   startLogger,

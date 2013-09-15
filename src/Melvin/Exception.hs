@@ -1,5 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveDataTypeable, RecordWildCards #-}
 
 module Melvin.Exception (
   MelvinException(..),

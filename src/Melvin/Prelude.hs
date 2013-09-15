@@ -1,7 +1,4 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE CPP, FlexibleInstances, TypeSynonymInstances, UndecidableInstances #-}
 
 -- | Melvin uses both I/O functions and Text heavily. This module provides
 -- everything a Melvin module should need.
