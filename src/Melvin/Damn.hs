@@ -1,5 +1,3 @@
-{-# LANGUAGE ImplicitParams #-}
-
 module Melvin.Damn (
   packetStream,
   responder

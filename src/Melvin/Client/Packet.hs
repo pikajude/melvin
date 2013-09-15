@@ -184,3 +184,5 @@ bullets t = T.replace ":bulletred:" "\ETX5●\SI"
           . T.replace ":bulletwhite:" "\ETX0●\SI"
           . T.replace ":bulletblack:" "\ETX1●\SI"
           $ t
+
+{-# ANN module ("HLint: ignore Use :" :: String) #-}
