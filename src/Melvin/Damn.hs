@@ -102,6 +102,7 @@ responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        , ("part", res_part)
                        , ("property", res_property)
                        , ("recv", res_recv)
+                       , ("kicked", res_kicked)
                        , ("send", res_send)
                        , ("disconnect", res_disconnect)
                        ]
@@ -308,6 +309,15 @@ res_recv_part Packet { pktParameter = p }
         n -> do
             modifyState (users . ix room . ix (u ^. _Just) . userJoinCount -~ 1)
             writeClient $ cmdDupPart (u ^. _Just) channel (n - 1)
+    return True
+
+res_kicked :: Callback
+res_kicked Packet { pktParameter = p
+                  , pktArgs = args
+                  , pktBody = b
+                  } st = do
+    channel <- toChannel $ p ^. _Just
+    writeClient $ cmdKick (args ^. ix "by") channel (st ^. username) b
     return True
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}

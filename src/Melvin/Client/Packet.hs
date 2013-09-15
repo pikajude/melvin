@@ -12,6 +12,7 @@ module Melvin.Client.Packet (
   cmdPrivmsg,
   cmdPrivaction,
   cmdSendError,
+  cmdKick,
 
   rplMyInfo,
   rplNotify,
@@ -31,6 +32,7 @@ import           Control.Applicative         ((*>), (<*), (<|>))
 import           Control.Monad
 import           Data.Attoparsec.Text hiding (parse)
 import           Data.Char
+import           Data.Maybe
 import qualified Data.Text as T
 import           Melvin.Damn.HTML
 import           Melvin.Damn.Tablumps
@@ -104,6 +106,10 @@ cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG"
 cmdPart, cmdModeChange :: Text -> Text -> Text -> Packet
 cmdPart n channel reason = Packet (hostOf n) "PART" [channel, unescape . unRaw $ delump reason]
 cmdModeChange channel u m = Packet (Just "dAmn") "MODE" [channel, T.cons '+' m, u]
+
+cmdKick :: Text -> Text -> Text -> Maybe Text -> Packet
+cmdKick kicker channel receiver reason =
+    Packet (hostOf kicker) "KICK" [channel, receiver, fromMaybe "no reason" reason]
 
 cmdDupJoin, cmdDupPart :: Text -> Text -> Int -> Packet
 cmdDupJoin n channel cnt = Packet (Just "dAmn") "NOTICE"
