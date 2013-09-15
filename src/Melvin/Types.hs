@@ -42,6 +42,7 @@ module Melvin.Types (
   ClientState(..),
   loggedIn,
   joinList,
+  joining,
   privclasses,
   users,
 
@@ -90,12 +91,12 @@ mkPrivclass n t = Privclass n t (toSymbol n)
             | otherwise = None
 
 data User = User
-        { userMember     :: Text
-        , userPrivclass  :: Maybe Privclass
-        , userIcon       :: Int
-        , userSymbol     :: Char
-        , userRealname   :: Text
-        , userGpc        :: Text
+        { _userMember     :: Text
+        , _userPrivclass  :: Maybe Privclass
+        , _userIcon       :: Int
+        , _userSymbol     :: Char
+        , _userRealname   :: Text
+        , _userGpc        :: Text
         , _userJoinCount :: Int
         } deriving (Eq, Ord, Show)
 
@@ -105,7 +106,7 @@ mkUser :: Map Text Privclass -> Text -> Text -> Int -> Char -> Text -> Text -> U
 mkUser ps m p i s r g = User m (ps ^? ix p) i s r g 1
 
 renderUser :: User -> Text
-renderUser User { userMember = m, userPrivclass = pc } =
+renderUser User { _userMember = m, _userPrivclass = pc } =
     case pcSymbol <$> pc of
         Nothing      -> m
         Just None    -> m
@@ -123,6 +124,7 @@ asMode pc = case pcSymbol pc of
 data ClientState = ClientState
         { _loggedIn    :: Bool
         , _joinList    :: Set Chatroom
+        , _joining     :: Set Text
         , _privclasses :: Map Chatroom (Map Text Privclass)
         , _users       :: Map Chatroom (Map Text User)
         }

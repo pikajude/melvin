@@ -14,6 +14,9 @@ module Melvin.Client.Packet (
   cmdSendError,
   cmdKick,
 
+  cmdPcChange,
+  cmdModeUpdate,
+
   rplMyInfo,
   rplNotify,
   rplNoTopic,
@@ -105,7 +108,20 @@ cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG"
 
 cmdPart, cmdModeChange :: Text -> Text -> Text -> Packet
 cmdPart n channel reason = Packet (hostOf n) "PART" [channel, unescape . unRaw $ delump reason]
-cmdModeChange channel u m = Packet (Just "dAmn") "MODE" [channel, T.cons '+' m, u]
+cmdModeChange channel u m = cmdModeUpdate channel u Nothing (Just m)
+
+cmdPcChange :: Text -> Text -> Text -> Text -> Packet
+cmdPcChange channel u pc mover = Packet (Just "dAmn") "NOTICE"
+    [channel, formatS "{} has been moved to {} by {}" [u, pc, mover]]
+
+cmdModeUpdate :: Text -> Text -> Maybe Text -> Maybe Text -> Packet
+cmdModeUpdate channel u old new = Packet (Just "dAmn") "MODE"
+    ([channel] ++ modestr ++ userargs)
+    where (modestr,userargs) = case (old,new) of
+              (Nothing,Nothing) -> ([],[])
+              (Nothing,Just m) -> (["+" ++ m], [u])
+              (Just m,Nothing) -> (["-" ++ m], [u])
+              (Just m,Just m') -> (["-" ++ m ++ "+" ++ m'], [u, u])
 
 cmdKick :: Text -> Text -> Text -> Maybe Text -> Packet
 cmdKick kicker channel receiver reason =

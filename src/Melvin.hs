@@ -97,6 +97,7 @@ buildClientSettings i h u t j = do
     csm <- newMVar ClientState
              { _loggedIn    = False
              , _joinList    = j
+             , _joining     = mempty
              , _privclasses = mempty
              , _users       = mempty
              }

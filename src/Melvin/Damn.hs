@@ -1,3 +1,5 @@
+{-# LANGUAGE ImplicitParams #-}
+
 module Melvin.Damn (
   packetStream,
   responder
@@ -112,6 +114,7 @@ recv_responses = M.fromList [ ("msg", res_recv_msg)
                             , ("action", res_recv_action)
                             , ("join", res_recv_join)
                             , ("part", res_recv_part)
+                            , ("privchg", res_recv_privchg)
                             ]
 
 res_dAmnServer :: Callback
@@ -144,7 +147,9 @@ res_join Packet { pktParameter = p
     let user = st ^. username
     channel <- toChannel $ fromJust p
     case args ^. ix "e" of
-        "ok" -> writeClient $ cmdJoin user channel
+        "ok" -> do
+            modifyState (joining %~ S.insert channel)
+            writeClient $ cmdJoin user channel
         "not privileged" -> writeClient $ errBannedFromChan user channel
         _ -> return ()
     return True
@@ -180,8 +185,14 @@ res_property Packet { pktParameter = p
 
         "members" -> do
             setMembers channel $ body ^. _Just
-            m <- getsState (\s -> s ^. users ^?! ix (toChatroom channel ^?! _Just))
-            writeClient $ rplNameReply channel user (map renderUser $ M.elems m)
+            joining' <- getsState (view joining)
+            when (channel `S.member` joining') $ do
+                let room = toChatroom channel ^?! _Just
+                m <- getsState (\s -> s ^. users ^?! ix room)
+                writeClient $ rplNameReply channel user (map renderUser $ M.elems m)
+                mypc <- getsState (\s -> s ^?! users . ix room . ix (st ^. username) . userPrivclass)
+                writeClient $ cmdModeUpdate channel user Nothing (mypc >>= asMode)
+                modifyState (joining %~ S.delete channel)
 
         x -> logError $ formatS "unhandled property {}" [x]
 
@@ -276,7 +287,7 @@ res_recv_join Packet { pktParameter = p }
             user <- buildUser (u ^. _Just) (b ^. _Just) room
             modifyState (users . ix room %~ M.insert (u ^. _Just) user)
             writeClient $ cmdJoin (u ^. _Just) channel
-            case asMode =<< userPrivclass user of
+            case asMode =<< view userPrivclass user of
                 Just m -> writeClient $ cmdModeChange channel (u ^. _Just) m
                 Nothing -> return ()
         Just r -> do
@@ -309,6 +320,27 @@ res_recv_part Packet { pktParameter = p }
         n -> do
             modifyState (users . ix room . ix (u ^. _Just) . userJoinCount -~ 1)
             writeClient $ cmdDupPart (u ^. _Just) channel (n - 1)
+    return True
+
+res_recv_privchg :: RecvCallback
+res_recv_privchg Packet { pktParameter = p }
+                 Packet { pktParameter = u
+                        , pktArgs = args
+                        } _st = do
+    channel <- toChannel $ p ^. _Just
+    let room = toChatroom channel ^?! _Just
+    user <- getsState (\s -> s ^? users . ix room . ix (u ^. _Just))
+    case user >>= fmap pcTitle . view userPrivclass of
+        -- they're definitely here; possibly-empty Folds are ok
+        Just pc' -> do
+            pc <- getsState (\s -> s ^?! privclasses . ix room . ix pc')
+            newpc <- getsState (\s -> s ^?! privclasses . ix room . ix (args ^. ix "pc"))
+            writeClient $ cmdModeUpdate channel (u ^. _Just) (asMode pc) (asMode newpc)
+            modifyState (users . ix room . ix (u ^. _Just) . userPrivclass ?~ newpc)
+
+        -- either the user isn't here or they have no PC
+        Nothing -> return ()
+    writeClient $ cmdPcChange channel (u ^. _Just) (args ^. ix "pc") (args ^. ix "by")
     return True
 
 res_kicked :: Callback
