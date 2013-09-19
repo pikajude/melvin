@@ -56,3 +56,26 @@ executable melvin
 
   if flag(error)
     ghc-options:       -Werror
+
+library
+  exposed-modules: Melvin.Damn.Tablumps
+  other-modules: Melvin.Exception
+  hs-source-dirs: src
+  build-depends: base
+               , attoparsec
+               , lens
+               , mtl
+               , pipes
+               , pipes-safe
+               , text
+               , text-format
+               , transformers
+  default-extensions:  NoImplicitPrelude, OverloadedStrings
+
+benchmark parser
+  type: exitcode-stdio-1.0
+  main-is: parser.hs
+  ghc-options: -Wall -O2
+  hs-source-dirs: benchmarks
+  build-depends: base, criterion, melvin, text
+  default-extensions: OverloadedStrings
