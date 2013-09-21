@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP, RecordWildCards #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 704
 {-# LANGUAGE DoRec #-}
 #else
