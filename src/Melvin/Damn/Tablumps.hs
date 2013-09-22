@@ -32,6 +32,7 @@ data Message = S [Message] | A Text Text [Message] | Dev Char Text
              deriving Show
 
 delump :: Text -> Raw
+delump "" = Raw ""
 delump t = Raw . T.strip . render t . parseOnly (many1 (lump 0)) $ simple t
 
 simple :: Text -> Text
