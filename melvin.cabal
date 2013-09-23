@@ -30,6 +30,7 @@ executable melvin
                      , containers
                      , cprng-aes
                      , damnpacket >= 0.1.2
+                     , data-default
                      , HTTP
                      , lens >= 3.9
                      , mtl
