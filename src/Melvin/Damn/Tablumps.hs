@@ -7,8 +7,7 @@
 module Melvin.Damn.Tablumps (
   delump,
   Raw,
-  unRaw,
-  lines
+  linesOf
 ) where
 
 import           Control.Applicative
@@ -36,10 +35,10 @@ instance Default RenderState where
 
 makeLenses ''RenderState
 
-newtype Raw = Raw { unRaw :: Text }
+newtype Raw = Raw Text
 
-lines :: Raw -> [Raw]
-lines m = map Raw . T.splitOn "\n" $ unRaw m
+linesOf :: Raw -> [Text]
+linesOf (Raw m) = T.splitOn "\n" m
 
 data Token = Lump Text [Text]
            | SimpleLump Text
@@ -89,7 +88,7 @@ tokenize = parseOnly (many1 tokenP <* endOfInput) where
 
 delump :: Text -> Raw
 delump t = case tokenize t of
-               Right ts -> Raw $ foldState render def ts
+               Right ts -> Raw . T.strip $ foldState render def ts
                Left err -> error err
 
 foldState :: Monoid m => (Token -> State RenderState m) -> RenderState -> [Token] -> m

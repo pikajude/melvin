@@ -64,6 +64,8 @@ library
   hs-source-dirs: src
   build-depends: base
                , attoparsec
+               , containers
+               , data-default
                , lens
                , mtl
                , pipes

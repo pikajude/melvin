@@ -37,7 +37,6 @@ import           Data.Attoparsec.Text hiding (parse)
 import           Data.Char
 import           Data.Maybe
 import qualified Data.Text as T
-import           Melvin.Damn.Tablumps
 import           Melvin.Prelude hiding       (takeWhile)
 import qualified Prelude as P
 
@@ -98,15 +97,15 @@ cmdJoin n channel = Packet (hostOf n) "JOIN" [channel]
 cmdSendError channel err = Packet (Just "dAmn") "NOTICE"
     [channel, formatS "Send error: {}" [err]]
 
-cmdPrivmsg, cmdPrivaction :: Text -> Text -> Raw -> Packet
+cmdPrivmsg, cmdPrivaction :: Text -> Text -> Text -> Packet
 cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG"
-    [channel, T.cons ':' . bullets $ unRaw text]
+    [channel, T.cons ':' $ bullets text]
 cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG"
-    [channel, ac . bullets $ unRaw text]
+    [channel, ac . bullets $ text]
     where ac m = "\1ACTION " ++ m ++ "\1"
 
 cmdPart, cmdModeChange :: Text -> Text -> Text -> Packet
-cmdPart n channel reason = Packet (hostOf n) "PART" [channel, unRaw $ delump reason]
+cmdPart n channel reason = Packet (hostOf n) "PART" [channel, reason]
 cmdModeChange channel u m = cmdModeUpdate channel u Nothing (Just m)
 
 cmdPcChange :: Text -> Text -> Text -> Text -> Packet
