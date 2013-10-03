@@ -10,9 +10,9 @@ import qualified Prelude as P
 error :: Q Exp
 error = do
     loc <- location
-    [e|(.) P.error ((++) ($(stringE (loc_filename loc))
-                      ++ ":"
-                      ++ $(stringE . show . fst $ loc_start loc)
-                      ++ ":"
-                      ++ $(stringE . show . snd $ loc_start loc)
-                      ++ ": "))|]
+    [e|(.) P.error ((++) (concat [$(stringE (loc_filename loc))
+                               , ":"
+                               , $(stringE . show . fst $ loc_start loc)
+                               , ":"
+                               , $(stringE . show . snd $ loc_start loc)
+                               , ": "]))|]
