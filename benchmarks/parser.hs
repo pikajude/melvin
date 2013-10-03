@@ -7,9 +7,9 @@ import Prelude
 main :: IO ()
 main = defaultMain [
          bgroup "test" [
-             bench "100" $ nf (unRaw . delump) ("&b\t" <> T.replicate 100 "&/b" <> "&/b\t")
-           , bench "300" $ nf (unRaw . delump) ("&b\t" <> T.replicate 300 "&/b" <> "&/b\t")
-           , bench "500" $ nf (unRaw . delump) ("&b\t" <> T.replicate 500 "&/b" <> "&/b\t")
-           , bench "700" $ nf (unRaw . delump) ("&b\t" <> T.replicate 700 "&/b" <> "&/b\t")
+             bench "100" $ nf delump ("&b\t" <> T.replicate 10 "&amp;" <> "&/b\t")
+           , bench "300" $ nf delump ("&b\t" <> T.replicate 30 "&amp;" <> "&/b\t")
+           , bench "500" $ nf delump ("&b\t" <> T.replicate 50 "&amp;" <> "&/b\t")
+           , bench "700" $ nf delump ("&b\t" <> T.replicate 70 "&amp;" <> "&/b\t")
          ]
        ]

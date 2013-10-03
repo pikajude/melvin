@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -11,6 +12,7 @@ module Melvin.Damn.Tablumps (
 ) where
 
 import           Control.Applicative
+import           Control.DeepSeq
 import           Control.Lens
 import           Control.Monad.RWS
 import           Data.Attoparsec.Text
@@ -35,7 +37,7 @@ instance Default RenderState where
 
 makeLenses ''RenderState
 
-newtype Raw = Raw Text
+newtype Raw = Raw Text deriving NFData
 
 linesOf :: Raw -> [Text]
 linesOf (Raw m) = T.splitOn "\n" m
