@@ -39,6 +39,7 @@ executable melvin
                     , parsec
                     , pipes >= 4.0
                     , pipes-safe >= 2.0
+                    , template-haskell
                     , text
                     , text-format
                     , thyme

@@ -59,7 +59,7 @@ tokenize = parseOnly (many1 tokenP <* endOfInput) where
         case term of
             ';' -> return $ NamedEntity r
             '\t' -> getLump r
-            _ -> error "unreachable"
+            _ -> $error "unreachable"
     getLump n
         | n == "thumb"                        = lumpWithArgs n 6
         | n == "emote"                        = lumpWithArgs n 5
@@ -77,7 +77,7 @@ tokenize = parseOnly (many1 tokenP <* endOfInput) where
         case amp of
             "&" -> return $ Lump "link" [dest]
             m -> arg *> return (Lump "link" [dest, m])
-    arg = takeWhile1 (/= '\t') <* char '\t'
+    arg = takeWhile (/= '\t') <* char '\t'
     numP = do
         string "&#"
         m <- peekChar
@@ -91,7 +91,7 @@ tokenize = parseOnly (many1 tokenP <* endOfInput) where
 delump :: Text -> Raw
 delump t = case tokenize t of
                Right ts -> Raw . T.strip $ foldState render def ts
-               Left err -> error err
+               Left err -> $error err
 
 foldState :: Monoid m => (Token -> State RenderState m) -> RenderState -> [Token] -> m
 foldState action st (input:inputs) =
@@ -161,8 +161,8 @@ render (NamedEntity s) = return $ namedEntities M.! s
 
 render (Entity n) = return $ T.singleton (chr n)
 
-render l@(Lump{..}) = error $ "unknown tablump " ++ P.show l
-render (SimpleLump s) = error $ "unknown simple tablump " ++ T.unpack s
+render l@(Lump{..}) = $error $ "unknown tablump " ++ P.show l
+render (SimpleLump s) = $error $ "unknown simple tablump " ++ T.unpack s
 
 isChromacity :: Text -> Bool
 isChromacity t = length items == 3

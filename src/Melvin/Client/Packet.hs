@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Melvin.Client.Packet (
   Packet(..),
   parse,
@@ -48,7 +50,7 @@ data Packet = Packet
 
 parse :: Text -> Packet
 parse text = case parseOnly parser text of
-    Left err -> error $ "Parsing failed (" ++ P.show err ++ ") for packet: " ++ P.show text
+    Left err -> $error $ "Parsing failed (" ++ P.show err ++ ") for packet: " ++ P.show text
     Right pk -> pk
 
 parser :: Parser Packet
