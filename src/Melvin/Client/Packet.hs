@@ -50,7 +50,7 @@ data Packet = Packet
 
 parse :: Text -> Packet
 parse text = case parseOnly parser text of
-    Left err -> $error $ "Parsing failed (" ++ P.show err ++ ") for packet: " ++ P.show text
+    Left e -> $err' $ "Parsing failed (" ++ P.show e ++ ") for packet: " ++ P.show text
     Right pk -> pk
 
 parser :: Parser Packet
@@ -96,8 +96,8 @@ cmdPong = Packet Nothing "PONG"
 
 cmdJoin, cmdSendError :: Text -> Text -> Packet
 cmdJoin n channel = Packet (hostOf n) "JOIN" [channel]
-cmdSendError channel err = Packet (Just "dAmn") "NOTICE"
-    [channel, formatS "Send error: {}" [err]]
+cmdSendError channel e = Packet (Just "dAmn") "NOTICE"
+    [channel, formatS "Send error: {}" [e]]
 
 cmdPrivmsg, cmdPrivaction :: Text -> Text -> Text -> Packet
 cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG"

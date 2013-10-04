@@ -21,7 +21,6 @@ Flag error
 
 executable melvin
   main-is:            Main.hs
-  other-modules:      Melvin.Prelude.TH
   build-depends:      base >=4.4 && <4.8
                     , async >= 2.0
                     , attoparsec
@@ -31,6 +30,7 @@ executable melvin
                     , damnpacket >= 0.1.2
                     , data-default
                     , deepseq
+                    , file-location
                     , HTTP
                     , lens >= 3.9
                     , mtl
@@ -40,7 +40,6 @@ executable melvin
                     , parsec
                     , pipes >= 4.0
                     , pipes-safe >= 2.0
-                    , template-haskell
                     , text
                     , text-format
                     , thyme
@@ -52,7 +51,6 @@ executable melvin
     build-depends:    lens >= 3.10
 
   hs-source-dirs:     src
-  other-modules:      Melvin.Prelude.TH
   default-language:   Haskell2010
   default-extensions: NoImplicitPrelude, OverloadedStrings
   ghc-options:        -Wall
@@ -62,18 +60,18 @@ executable melvin
 
 library
   exposed-modules:    Melvin.Damn.Tablumps
-  other-modules:      Melvin.Exception, Melvin.Prelude.TH
+  other-modules:      Melvin.Exception
   hs-source-dirs:     src
   build-depends:      base
                     , attoparsec
                     , containers
                     , data-default
                     , deepseq
+                    , file-location
                     , lens
                     , mtl
                     , pipes
                     , pipes-safe
-                    , template-haskell
                     , text
                     , text-format
                     , transformers

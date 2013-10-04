@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -15,7 +14,6 @@ module Melvin.Prelude (
   (++),
   show,
   (<$>),
-  error,
 
   -- IO
   runMelvin,
@@ -39,10 +37,10 @@ import           Data.Text.Format as X
 import           Data.Text.Format.Params         (Params)
 import qualified Data.Text.IO as IO
 import           Data.Text.Lazy                  (toStrict)
-import           Melvin.Prelude.TH
+import           FileLocation as X
 import           Pipes as X hiding               (each, (<~))
 import           Pipes.Safe
-import           Prelude as X hiding             ((++), error, putStrLn, print, show, lines
+import           Prelude as X hiding             ((++), putStrLn, print, show, lines
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 704
                                                  , catch
 #endif

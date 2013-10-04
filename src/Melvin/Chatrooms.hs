@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Melvin.Chatrooms (
   fromChannel,
   toChatroom,
@@ -41,7 +43,7 @@ toChannel text
     | otherwise = do
         me <- lift $ use username
         let usernames = T.splitOn ":" (T.drop 6 text)
-        return . T.cons '&' . fromJust $ find (/= me) usernames
+        return . T.cons '&' . $fromJst $ find (/= me) usernames
 
 fromChatroom :: Text -> ClientT Text
 fromChatroom = toChannel

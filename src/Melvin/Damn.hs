@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Melvin.Damn (
   packetStream,
   responder
@@ -6,7 +8,6 @@ module Melvin.Damn (
 import           Control.Applicative
 import           Control.Arrow
 import           Control.Concurrent hiding   (yield)
-import           Control.Exception           (throwIO)
 import           Control.Monad
 import           Control.Monad.Fix
 import qualified Data.Map as M
@@ -36,7 +37,7 @@ hGetTillNull h = do
             if ch == '\0'
                 then return mempty
                 else fmap (T.cons ch) $ hGetTillNull h
-        else throwIO $ mkIOError eofErrorType "read timeout" (Just h) Nothing
+        else $thrwIO $ mkIOError eofErrorType "read timeout" (Just h) . Just
 
 handler :: SomeException -> ClientT ()
 handler ex | Just (ClientSocketErr e) <- fromException ex = do
@@ -65,7 +66,7 @@ packetStream mv = bracket
         line <- liftIO $ hGetTillNull h
         lift . logWarning $ show $ cleanup line
         case parse $ cleanup line of
-            Left err -> throwM $ ServerNoParse err line
+            Left e -> throwM $ ServerNoParse e line
             Right pk -> do
                 yield pk
                 f)
@@ -143,7 +144,7 @@ res_join :: Callback
 res_join Packet { pktParameter = p
                 , pktArgs = args } st = do
     let user = st ^. username
-    channel <- toChannel $ fromJust p
+    channel <- toChannel $ $fromJst p
     case args ^. ix "e" of
         "ok" -> do
             modifyState (joining %~ S.insert channel)
@@ -156,7 +157,7 @@ res_part :: Callback
 res_part Packet { pktParameter = p
                 , pktArgs = args } st = do
     let user = st ^. username
-    channel <- toChannel $ fromJust p
+    channel <- toChannel $ $fromJst p
     case args ^. ix "e" of
         "ok" -> writeClient $ cmdPart user channel "leaving"
         _ -> return ()
@@ -167,7 +168,7 @@ res_property Packet { pktParameter = p
                     , pktArgs = args
                     , pktBody = body } st = do
     let user = st ^. username
-    channel <- toChannel $ fromJust p
+    channel <- toChannel $ $fromJst p
     case args ^. ix "p" of
         "topic" -> case body of
             Nothing -> writeClient $ rplNoTopic user channel "No topic is set"
@@ -255,7 +256,7 @@ res_recv_msg Packet { pktParameter = p }
              Packet { pktArgs = args
                     , pktBody = b
                     } st = do
-    channel <- toChannel $ fromJust p
+    channel <- toChannel $ $fromJst p
     unless (st ^. username == args ^. ix "from") $
         forM_ (linesOf . delump $ b ^. _Just) $ \line ->
             writeClient $ cmdPrivmsg (args ^. ix "from") channel line
@@ -266,7 +267,7 @@ res_recv_action Packet { pktParameter = p }
                 Packet { pktArgs = args
                        , pktBody = b
                        } st = do
-    channel <- toChannel $ fromJust p
+    channel <- toChannel $ $fromJst p
     unless (st ^. username == args ^. ix "from") $
         forM_ (linesOf . delump $ b ^. _Just) $ \line ->
             writeClient $ cmdPrivaction (args ^. ix "from") channel line
@@ -277,7 +278,7 @@ res_recv_join Packet { pktParameter = p }
               Packet { pktParameter = u
                      , pktBody = b
                      } _st = do
-    channel <- toChannel $ fromJust p
+    channel <- toChannel $ $fromJst p
     let room = toChatroom channel ^?! _Just
     us <- getsState (\s -> s ^? users . ix room . ix (u ^. _Just))
     case us of

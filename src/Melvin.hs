@@ -45,8 +45,8 @@ runClientPair index (h, host, _) = do
     hSetEncoding h utf8
     tokpair <- authenticate h
     case tokpair of
-        Left err -> do
-            logWarningIO $ "Client #" ++ show index ++ " couldn't authenticate: " ++ show err
+        Left e -> do
+            logWarningIO $ "Client #" ++ show index ++ " couldn't authenticate: " ++ show e
             hClose h
         Right (uname, token_, rs) -> do
             set <- buildClientSettings index h uname token_ rs
@@ -75,9 +75,9 @@ runClientPair index (h, host, _) = do
                      performGC
                      case result of
                          r@Right{..} -> return r
-                         Left err -> if isRetryable err
+                         Left e -> if isRetryable e
                              then f (settings & retryWait +~ 5)
-                             else return $ Left err) set
+                             else return $ Left e) set
 
             result <- liftM2 (,) (wait client) (wait server)
             case result of
