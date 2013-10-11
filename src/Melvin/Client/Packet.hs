@@ -97,7 +97,7 @@ cmdPong = Packet Nothing "PONG"
 cmdJoin, cmdSendError :: Text -> Text -> Packet
 cmdJoin n channel = Packet (hostOf n) "JOIN" [channel]
 cmdSendError channel e = Packet (Just "dAmn") "NOTICE"
-    [channel, formatS "Send error: {}" [e]]
+    [channel, [st|Send error: %s|] e]
 
 cmdPrivmsg, cmdPrivaction :: Text -> Text -> Text -> Packet
 cmdPrivmsg n channel text = Packet (hostOf n) "PRIVMSG"
@@ -112,7 +112,7 @@ cmdModeChange channel u m = cmdModeUpdate channel u Nothing (Just m)
 
 cmdPcChange :: Text -> Text -> Text -> Text -> Packet
 cmdPcChange channel u pc mover = Packet (Just "dAmn") "NOTICE"
-    [channel, formatS "{} has been moved to {} by {}" [u, pc, mover]]
+    [channel, [st|%s has been moved to %s by %s|] u pc mover]
 
 cmdModeUpdate :: Text -> Text -> Maybe Text -> Maybe Text -> Packet
 cmdModeUpdate channel u old new = Packet (Just "dAmn") "MODE"
@@ -129,9 +129,9 @@ cmdKick kicker channel receiver reason =
 
 cmdDupJoin, cmdDupPart :: Text -> Text -> Int -> Packet
 cmdDupJoin n channel cnt = Packet (Just "dAmn") "NOTICE"
-    [channel, formatS "{} has joined again (now joined {})" [n, readable cnt]]
+    [channel, [st|%s has joined again (now joined %s)|] n (readable cnt)]
 cmdDupPart n channel cnt = Packet (Just "dAmn") "NOTICE"
-    [channel, formatS "{} has left (now joined {})" [n, readable cnt]]
+    [channel, [st|%s has left (now joined %s)|] n (readable cnt)]
 
 readable :: (Eq a, Num a, Show a) => a -> Text
 readable 1 = "once"
@@ -171,7 +171,7 @@ hostname :: Maybe Text
 hostname = Just "chat.deviantart.com"
 
 hostOf :: Text -> Maybe Text
-hostOf = Just . formatS "{}!{}@chat.deviantart.com" . join (,)
+hostOf = Just . join [st|%s!%s@chat.deviantart.com|]
 
 bullets :: Text -> Text
 bullets t = T.replace ":bulletred:" "\ETX5●\SI"

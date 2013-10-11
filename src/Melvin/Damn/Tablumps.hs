@@ -94,15 +94,15 @@ delump t = case tokenize t of
                Left e -> $err' e
 
 foldState :: Monoid m => (Token -> State RenderState m) -> RenderState -> [Token] -> m
-foldState action st (input:inputs) =
-    let (text, newstate) = runState (action input) st
+foldState action sta (input:inputs) =
+    let (text, newstate) = runState (action input) sta
      in text <> foldState action newstate inputs
 foldState _a _s [] = mempty
 
 render :: Token -> State RenderState Text
 render (Plain t) = do
-    st <- gets (view stDepth)
-    return $ if st > 0 then strike t else t
+    sta <- gets (view stDepth)
+    return $ if sta > 0 then strike t else t
 
 render (SimpleLump n)
     | n `elem` ["/b", "/i", "/u"] = return "\15"

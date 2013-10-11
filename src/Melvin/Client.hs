@@ -41,11 +41,11 @@ responder = handle (lift . handler) $ fix $ \f -> do
     p <- await
     continue <- case M.lookup (pktCommand p) responses of
         Nothing -> do
-            lift . logInfo $ formatS "Unhandled packet from client: {}" [show p]
+            lift . logInfo $ [st|Unhandled packet from client: %?|] p
             return False
         Just callback -> do
-            st <- lift $ lift get
-            lift $ callback p st
+            sta <- lift $ lift get
+            lift $ callback p sta
     when continue f
 
 
@@ -64,8 +64,8 @@ responses = M.fromList [ ("QUIT", res_quit)
                        ]
 
 res_quit :: Callback
-res_quit _ st = do
-    logInfo $ formatS "Client #{} quit cleanly." [clientNumber st]
+res_quit _ sta = do
+    logInfo $ [st|Client #%d quit cleanly.|] (clientNumber sta)
     writeServer Damn.disconnect
     return False
 
@@ -76,16 +76,16 @@ res_ping Packet { pktArguments = args } _ = do
 
 res_mode :: Callback
 res_mode p _ = do
-    logInfo $ formatS "Received mode command, should handle: {}" [show p]
+    logInfo $ [st|Received mode command, should handle: %?|] p
     return True
 
 res_join :: Callback
-res_join Packet { pktArguments = a } st = do
+res_join Packet { pktArguments = a } sta = do
     case a of
-        [] -> writeClient $ errNeedMoreParams (st ^. username)
+        [] -> writeClient $ errNeedMoreParams (sta ^. username)
         (rooms:_) -> forM_ (T.splitOn "," rooms) $ \r ->
             case toChatroom r of
-                Nothing -> writeClient $ errNoSuchChannel (st ^. username) r
+                Nothing -> writeClient $ errNoSuchChannel (sta ^. username) r
                 Just c -> do
                     l <- getsState $ view loggedIn
                     if l
@@ -94,24 +94,24 @@ res_join Packet { pktArguments = a } st = do
     return True
 
 res_part :: Callback
-res_part Packet { pktArguments = a } st = do
+res_part Packet { pktArguments = a } sta = do
     case a of
-        [] -> writeClient $ errNeedMoreParams (st ^. username)
+        [] -> writeClient $ errNeedMoreParams (sta ^. username)
         (room:_) -> case toChatroom room of
-            Nothing -> writeClient $ errNoSuchChannel (st ^. username) room
+            Nothing -> writeClient $ errNoSuchChannel (sta ^. username) room
             Just c -> writeServer =<< Damn.part c
     return True
 
 res_privmsg :: Callback
-res_privmsg Packet { pktArguments = (room:msg) } st = do
+res_privmsg Packet { pktArguments = (room:msg) } sta = do
     case toChatroom room of
-        Nothing -> writeClient $ errNoSuchChannel (st ^. username) room
+        Nothing -> writeClient $ errNoSuchChannel (sta ^. username) room
         Just r -> case msg of
-                      [] -> writeClient $ errNeedMoreParams (st ^. username)
+                      [] -> writeClient $ errNeedMoreParams (sta ^. username)
                       (m:_) -> case T.stripPrefix "\1ACTION " m of
                                    Just ac -> writeServer =<< Damn.action r (T.init ac)
                                    Nothing -> writeServer =<< Damn.msg r m
     return True
-res_privmsg _ st = writeClient (errNeedMoreParams (st ^. username)) >> return True
+res_privmsg _ sta = writeClient (errNeedMoreParams (sta ^. username)) >> return True
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}

@@ -31,4 +31,4 @@ escape = T.concatMap go
         go '"' = "&quot;"
         go '\'' = "&apos;"
         go x | ord x < 127 = T.singleton x
-        go s = formatS "&#{};" [show $ ord s]
+        go s = [st|&#%d;|] (ord s)

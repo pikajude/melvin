@@ -50,10 +50,10 @@ greet h Packet {
       pktArguments = (nick:_)
     } = do
     acNick .= Just nick
-    write h $ formatS ":chat.deviantart.com 001 {} :Welcome to dAmn {}!{}@chat.deviantart.com\r\n" [nick, nick, nick]
-    write h $ formatS ":chat.deviantart.com 002 {} :Your host is chat.deviantart.com, running dAmnServer 0.3\r\n" [nick]
-    write h $ formatS ":chat.deviantart.com 004 {} chat.deviantart.com dAmnServer0.3 qov i\r\n" [nick]
-    write h $ formatS ":chat.deviantart.com 005 {} PREFIX=(qov)~@+\r\n" [nick]
+    write h $ [st|:chat.deviantart.com 001 %s :Welcome to dAmn %s!%s@chat.deviantart.com\r\n|] nick nick nick
+    write h $ [st|:chat.deviantart.com 002 %s :Your host is chat.deviantart.com, running dAmnServer 0.3\r\n|] nick
+    write h $ [st|:chat.deviantart.com 004 %s chat.deviantart.com dAmnServer0.3 qov i\r\n|] nick
+    write h $ [st|:chat.deviantart.com 005 %s PREFIX=(qov)~@+\r\n|] nick
 greet h _ = write h . render $ errNoNicknameGiven "stupid"
 
 respond :: Handle -> Text -> Packet -> AuthState ()

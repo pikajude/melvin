@@ -41,11 +41,11 @@ hGetTillNull h = do
 
 handler :: SomeException -> ClientT ()
 handler ex | Just (ClientSocketErr e) <- fromException ex = do
-    logWarning $ formatS "Server thread hit an exception, but client disconnected ({}), so nothing to do." [show e]
+    logWarning $ [st|Server thread hit an exception, but client disconnected (%?), so nothing to do.|] e
     throwM ex
 handler ex = do
     uname <- lift $ use username
-    writeClient $ rplNotify uname $ formatS "Error when communicating with dAmn: {}" [show ex]
+    writeClient $ rplNotify uname $ [st|Error when communicating with dAmn: %?|] ex
     if isRetryable ex
         then writeClient $ rplNotify uname "Trying to reconnect..."
         else do
@@ -79,15 +79,15 @@ responder = handle (lift . handler) $ fix $ \f -> do
     p <- await
     continue <- case M.lookup (pktCommand p) responses of
         Nothing -> do
-            lift . logInfo $ formatS "Unhandled packet from damn: {}" [show p]
+            lift . logInfo $ [st|Unhandled packet from damn: %?|] p
             return False
         Just callback -> do
-            st <- lift $ lift get
-            lift $ callback p st
+            sta <- lift $ lift get
+            lift $ callback p sta
     when continue f
 
 auth :: Handle -> IO ()
-auth h = hprint h "dAmnClient 0.3\nagent=melvin 0.1\n\0" ()
+auth h = System.IO.hPutStr h "dAmnClient 0.3\nagent=melvin 0.1\n\0"
 
 
 -- | Big ol' list of callbacks!
@@ -117,9 +117,9 @@ recv_responses = M.fromList [ ("msg", res_recv_msg)
                             ]
 
 res_dAmnServer :: Callback
-res_dAmnServer _ st = do
-    let (num, (user, tok)) = (clientNumber &&& view username &&& view token) st
-    logInfo $ formatS "Client #{} handshook successfully." [num]
+res_dAmnServer _ sta = do
+    let (num, (user, tok)) = (clientNumber &&& view username &&& view token) sta
+    logInfo $ [st|Client #%d handshook successfully.|] num
     writeServer $ Damn.login user tok
     return True
 
@@ -127,8 +127,8 @@ res_ping :: Callback
 res_ping _ _ = writeServer Damn.pong >> return True
 
 res_login :: Callback
-res_login Packet { pktArgs = args } st = do
-    let user = st ^. username
+res_login Packet { pktArgs = args } sta = do
+    let user = sta ^. username
     case args ^. ix "e" of
         "ok" -> do
             modifyState (loggedIn .~ True)
@@ -142,8 +142,8 @@ res_login Packet { pktArgs = args } st = do
 
 res_join :: Callback
 res_join Packet { pktParameter = p
-                , pktArgs = args } st = do
-    let user = st ^. username
+                , pktArgs = args } sta = do
+    let user = sta ^. username
     channel <- toChannel $ $fromJst p
     case args ^. ix "e" of
         "ok" -> do
@@ -155,8 +155,8 @@ res_join Packet { pktParameter = p
 
 res_part :: Callback
 res_part Packet { pktParameter = p
-                , pktArgs = args } st = do
-    let user = st ^. username
+                , pktArgs = args } sta = do
+    let user = sta ^. username
     channel <- toChannel $ $fromJst p
     case args ^. ix "e" of
         "ok" -> writeClient $ cmdPart user channel "leaving"
@@ -166,8 +166,8 @@ res_part Packet { pktParameter = p
 res_property :: Callback
 res_property Packet { pktParameter = p
                     , pktArgs = args
-                    , pktBody = body } st = do
-    let user = st ^. username
+                    , pktBody = body } sta = do
+    let user = sta ^. username
     channel <- toChannel $ $fromJst p
     case args ^. ix "p" of
         "topic" -> case body of
@@ -176,10 +176,10 @@ res_property Packet { pktParameter = p
                 writeClient $ rplTopic user channel (T.cons ':' . T.intercalate " | " . linesOf $ delump b)
                 writeClient $ rplTopicWhoTime user channel (args ^. ix "by") (args ^. ix "ts")
 
-        "title" -> logInfo $ formatS "Received title for {}: {}" [channel, body ^. _Just]
+        "title" -> logInfo $ [st|Received title for %s: %s|] channel (body ^. _Just)
 
         "privclasses" -> do
-            logInfo $ formatS "Received privclasses for {}" [channel]
+            logInfo $ [st|Received privclasses for %s|] channel
             setPrivclasses channel $ body ^. _Just
 
         "members" -> do
@@ -189,11 +189,11 @@ res_property Packet { pktParameter = p
                 let room = toChatroom channel ^?! _Just
                 m <- getsState (\s -> s ^. users ^?! ix room)
                 writeClient $ rplNameReply channel user (map renderUser $ M.elems m)
-                mypc <- getsState (\s -> s ^?! users . ix room . ix (st ^. username) . userPrivclass)
+                mypc <- getsState (\s -> s ^?! users . ix room . ix (sta ^. username) . userPrivclass)
                 writeClient $ cmdModeUpdate channel user Nothing (mypc >>= asMode)
                 modifyState (joining %~ S.delete channel)
 
-        x -> logError $ formatS "unhandled property {}" [x]
+        x -> logError $ [st|Unhandled property %s|] x
 
     return True
     where
@@ -236,8 +236,8 @@ res_send Packet { pktParameter = p
     return True
 
 res_disconnect :: Callback
-res_disconnect Packet { pktArgs = args } st = do
-    let user = st ^. username
+res_disconnect Packet { pktArgs = args } sta = do
+    let user = sta ^. username
     case args ^. ix "e" of
         "ok" -> return False
         n -> do
@@ -245,19 +245,19 @@ res_disconnect Packet { pktArgs = args } st = do
             throwM $ ServerDisconnect n
 
 res_recv :: Callback
-res_recv pk st = case pk ^. pktSubpacketL of
-    Nothing -> True <$ logError (formatS "Received an empty recv packet: {}" [show pk])
+res_recv pk sta = case pk ^. pktSubpacketL of
+    Nothing -> True <$ logError ([st|Received an empty recv packet: %?|] pk)
     Just spk -> case M.lookup (pktCommand spk) recv_responses of
-                    Nothing -> True <$ logError (formatS "Unhandled recv packet: {}" [show spk])
-                    Just c -> c pk spk st
+                    Nothing -> True <$ logError ([st|Unhandled recv packet: %?|] spk)
+                    Just c -> c pk spk sta
 
 res_recv_msg :: RecvCallback
 res_recv_msg Packet { pktParameter = p }
              Packet { pktArgs = args
                     , pktBody = b
-                    } st = do
+                    } sta = do
     channel <- toChannel $ $fromJst p
-    unless (st ^. username == args ^. ix "from") $
+    unless (sta ^. username == args ^. ix "from") $
         forM_ (linesOf . delump $ b ^. _Just) $ \line ->
             writeClient $ cmdPrivmsg (args ^. ix "from") channel line
     return True
@@ -266,9 +266,9 @@ res_recv_action :: RecvCallback
 res_recv_action Packet { pktParameter = p }
                 Packet { pktArgs = args
                        , pktBody = b
-                       } st = do
+                       } sta = do
     channel <- toChannel $ $fromJst p
-    unless (st ^. username == args ^. ix "from") $
+    unless (sta ^. username == args ^. ix "from") $
         forM_ (linesOf . delump $ b ^. _Just) $ \line ->
             writeClient $ cmdPrivaction (args ^. ix "from") channel line
     return True
@@ -346,9 +346,9 @@ res_kicked :: Callback
 res_kicked Packet { pktParameter = p
                   , pktArgs = args
                   , pktBody = b
-                  } st = do
+                  } sta = do
     channel <- toChannel $ p ^. _Just
-    writeClient $ cmdKick (args ^. ix "by") channel (st ^. username) b
+    writeClient $ cmdKick (args ^. ix "by") channel (sta ^. username) b
     return True
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}

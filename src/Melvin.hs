@@ -81,11 +81,9 @@ runClientPair index (h, host, _) = do
 
             result <- liftM2 (,) (wait client) (wait server)
             case result of
-                (Right{..}, Right{..}) -> logInfoIO $ formatS "Client #{} exited normally" [index]
-                (Left m, _) -> logErrorIO $ "Client #" ++ show index
-                                         ++ " encountered an error: " ++ show m
-                (_, Left m) -> logErrorIO $ "Client #" ++ show index
-                                         ++ "'s server encountered an error: " ++ show m
+                (Right{..}, Right{..}) -> logInfoIO $ [st|Client #%d exited cleanly|] index
+                (Left m, _) -> logErrorIO $ [st|Client #%d encountered an error: %?|] index m
+                (_, Left m) -> logErrorIO $ [st|Client #%d's server encountered an error: %?|] index m
 
 buildClientSettings :: Integer -> Handle -> Text -> Text -> Set Chatroom -> IO ClientSettings
 buildClientSettings i h u t j = do

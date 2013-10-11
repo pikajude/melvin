@@ -201,8 +201,8 @@ getState = do
 getsState :: (ClientState -> a) -> ClientT a
 getsState f = do
     cs <- lift $ use clientState
-    st <- liftIO $ readMVar cs
-    return $ f st
+    sta <- liftIO $ readMVar cs
+    return $ f sta
 
 putState :: ClientState -> ClientT ()
 putState v = do
