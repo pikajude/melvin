@@ -16,7 +16,9 @@ module Melvin.Client.Packet (
   cmdSendError,
   cmdKick,
 
-  cmdPcChange,
+  cmdPcCreate,
+  cmdPcUpdate,
+  cmdPcMove,
   cmdModeUpdate,
 
   rplMyInfo,
@@ -110,9 +112,15 @@ cmdPart, cmdModeChange :: Text -> Text -> Text -> Packet
 cmdPart n channel reason = Packet (hostOf n) "PART" [channel, reason]
 cmdModeChange channel u m = cmdModeUpdate channel u Nothing (Just m)
 
-cmdPcChange :: Text -> Text -> Text -> Text -> Packet
-cmdPcChange channel u pc mover = Packet (Just "dAmn") "NOTICE"
+cmdPcMove, cmdPcCreate, cmdPcUpdate :: Text -> Text -> Text -> Text -> Packet
+cmdPcMove channel u pc mover = Packet (Just "dAmn") "NOTICE"
     [channel, [st|%s has been moved to %s by %s|] u pc mover]
+
+cmdPcCreate channel pcname privs creator = Packet (Just "dAmn") "NOTICE"
+    [channel, [st|%s has created group %s with privileges: %s|] creator pcname privs]
+
+cmdPcUpdate channel pcname privs creator = Packet (Just "dAmn") "NOTICE"
+    [channel, [st|%s has updated group %s with privileges: %s|] creator pcname privs]
 
 cmdModeUpdate :: Text -> Text -> Maybe Text -> Maybe Text -> Packet
 cmdModeUpdate channel u old new = Packet (Just "dAmn") "MODE"

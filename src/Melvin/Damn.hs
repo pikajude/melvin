@@ -114,6 +114,7 @@ recv_responses = M.fromList [ ("msg", res_recv_msg)
                             , ("join", res_recv_join)
                             , ("part", res_recv_part)
                             , ("privchg", res_recv_privchg)
+                            , ("admin", res_recv_admin)
                             ]
 
 res_dAmnServer :: Callback
@@ -339,7 +340,26 @@ res_recv_privchg Packet { pktParameter = p }
 
         -- either the user isn't here or they have no PC
         Nothing -> return ()
-    writeClient $ cmdPcChange channel (u ^. _Just) (args ^. ix "pc") (args ^. ix "by")
+    writeClient $ cmdPcMove channel (u ^. _Just) (args ^. ix "pc") (args ^. ix "by")
+    return True
+
+res_recv_admin :: RecvCallback
+res_recv_admin parent pkt@Packet { pktParameter = cmd } = case cmd of
+    Just "create" -> res_recv_admin_update True parent pkt
+    Just "update" -> res_recv_admin_update False parent pkt
+    _ -> const $ True <$ logError ([st|Unhandled admin packet: %?|] parent)
+
+res_recv_admin_update :: Bool -> RecvCallback
+res_recv_admin_update b
+                      Packet { pktParameter = p }
+                      Packet { pktArgs = args }
+                      sta = do
+    channel <- toChannel $ p ^. _Just
+    writeClient $ (if b then cmdPcCreate else cmdPcUpdate)
+        channel
+        (args ^. ix "name")
+        (args ^. ix "privs")
+        (args ^. ix "by")
     return True
 
 res_kicked :: Callback
