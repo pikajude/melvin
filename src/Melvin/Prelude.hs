@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -31,6 +32,7 @@ module Melvin.Prelude (
 ) where
 
 import           Control.Applicative
+import           Control.Exception               (IOException)
 import           Control.Lens as X hiding        (Level)
 import           Control.Monad.IO.Class
 import           Control.Monad.Logger as X
@@ -39,6 +41,7 @@ import           Data.Monoid as X
 import           Data.Text                       (Text, pack)
 import qualified Data.Text.IO as IO
 import           FileLocation as X
+import           Melvin.Exception
 import           Melvin.Internal.Orphans as X    ()
 import           Melvin.Internal.MonadAsync as X
 import           Pipes as X hiding               (each, (<~))
@@ -62,6 +65,11 @@ show = pack . P.show
 (++) = (<>)
 
 -- | Dealing with the underlying Proxy monad upon which Melvin clients are
--- based.
-runMelvin :: (Exception a, MonadIO m, MonadCatch m) => s -> Effect (SafeT (StateT s m)) r -> m (Either a r)
-runMelvin st_ m = try (evalStateT (runSafeT $ runEffect m) st_)
+-- based. Despite the type signature, this function only handles IO
+-- exceptions and Melvin-internal exceptions.
+runMelvin :: (MonadIO m, MonadCatch m) => s -> Effect (SafeT (StateT s m)) r -> m (Either SomeException r)
+runMelvin st_ m = catches
+    (liftM Right $ evalStateT (runSafeT $ runEffect m) st_)
+    [ Handler $ \(e :: IOException) -> return (Left $ toException e)
+    , Handler $ \(e :: MelvinException) -> return (Left $ toException e)
+    ]
