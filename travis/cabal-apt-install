@@ -18,4 +18,4 @@ deps()
 }
 
 $APT install $(deps "$@") libghc-quickcheck2-dev # QuickCheck is special
-$CABAL_INSTALL_DEPS --constraint='hlint installed' --constraint='template-haskell == 2.8.0.0' "$@" # Install the rest via Hackage
+$CABAL_INSTALL_DEPS --constraint='hlint installed' --constraint='template-haskell installed' "$@" # Install the rest via Hackage
