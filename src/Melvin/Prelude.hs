@@ -63,7 +63,7 @@ show = pack . P.show
 
 -- | Dealing with the underlying Proxy monad upon which Melvin clients are
 -- based.
-runMelvin :: (LogIO m, MonadCatch m) => s -> Effect (SafeT (StateT s m)) r -> m (Either SomeException r)
+runMelvin :: (Exception a, MonadIO m, MonadCatch m) => s -> Effect (SafeT (StateT s m)) r -> m (Either a r)
 runMelvin st_ m = catch
     (liftM Right $ evalStateT (runSafeT $ runEffect m) st_)
     (\e -> return (Left e))
