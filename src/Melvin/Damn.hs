@@ -177,14 +177,14 @@ res_property Packet { pktParameter = p
                 writeClient $ rplTopic user channel (T.cons ':' . T.intercalate " | " . linesOf $ delump b)
                 writeClient $ rplTopicWhoTime user channel (args ^. ix "by") (args ^. ix "ts")
 
-        "title" -> $logInfo $ [st|Received title for %s: %s|] channel (body ^. _Just)
+        "title" -> logInfo $ [st|Received title for %s: %s|] channel (body ^. _Just)
 
         "privclasses" -> do
-            $logInfo $ [st|Received privclasses for %s|] channel
+            logInfo $ [st|Received privclasses for %s|] channel
             joining' <- getsState (view joining)
             unless (channel `S.member` joining') $ do
-                $logDebug $ [st|Got privclasses, but finished joining!|]
-                $logDebug $ [st|%?|] (toPrivclasses (body ^. _Just))
+                logInfo $ [st|Got privclasses, but finished joining!|]
+                logInfo $ [st|%?|] (toPrivclasses (body ^. _Just))
             modifyState $ privclasses . at (toChatroom channel ^?! _Just) ?~
                 toPrivclasses (body ^. _Just)
 
@@ -199,7 +199,7 @@ res_property Packet { pktParameter = p
                 writeClient $ cmdModeUpdate channel user Nothing (mypc >>= asMode)
                 modifyState (joining %~ S.delete channel)
 
-        x -> $logError $ [st|Unhandled property %s|] x
+        x -> logError $ [st|Unhandled property %s|] x
 
     return True
     where
@@ -350,7 +350,7 @@ res_recv_admin parent pkt@Packet { pktParameter = cmd } = case cmd of
     Just "create" -> res_recv_admin_update True parent pkt
     Just "update" -> res_recv_admin_update False parent pkt
     Just "remove" -> res_recv_admin_remove parent pkt
-    _ -> const $ True <$ $logError ([st|Unhandled admin packet: %?|] pkt)
+    _ -> const $ True <$ logError ([st|Unhandled admin packet: %?|] pkt)
 
 res_recv_admin_update :: Bool -> RecvCallback
 res_recv_admin_update b

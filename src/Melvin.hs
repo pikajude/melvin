@@ -27,10 +27,10 @@ import Network
 import System.IO
 import System.Mem
 
-doAMelvin :: Options -> IO ()
-doAMelvin Options { optionPort = p
-                  , optionMaxClients = _
-                  } = do
+doAMelvin :: Mopts -> [String] -> IO ()
+doAMelvin Mopts { moptPort = p
+                , moptMaxClients = _
+                } _args = do
     startLogger
     server <- listenOn p
     forM_ [1..] $ \i -> do
