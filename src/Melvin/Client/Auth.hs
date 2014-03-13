@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
@@ -27,12 +28,12 @@ data AuthClient = AuthClient
 makeLenses ''AuthClient
 
 type Username = Text
-type AuthState = StateT AuthClient (LoggingT IO)
+type AuthState m = StateT AuthClient m
 
-authHandler :: SomeException -> LoggingT IO (Either SomeException (Username, Text, S.Set Chatroom))
+authHandler :: LogIO m => SomeException -> m (Either SomeException a)
 authHandler = return . Left
 
-authenticate :: Handle -> LoggingT IO (Either SomeException (Username, Text, S.Set Chatroom))
+authenticate :: (MonadCatch m, LogIO m) => Handle -> m (Either SomeException (Username, Text, S.Set Chatroom))
 authenticate h = handle authHandler $
     (`evalStateT` AuthClient Nothing Nothing Nothing mempty) . fix $ \f -> do
         ai <- getAuthInfo h
@@ -44,7 +45,7 @@ authenticate h = handle authHandler $
                 authSuccess h
                 return $ Right t
 
-greet :: Handle -> Packet -> AuthState ()
+greet :: LogIO m => Handle -> Packet -> AuthState m ()
 greet h Packet {
       pktArguments = (nick:_)
     } = do
@@ -55,7 +56,7 @@ greet h Packet {
     write h $ [st|:chat.deviantart.com 005 %s PREFIX=(qov)~@+\r\n|] nick
 greet h _ = write h . render $ errNoNicknameGiven "stupid"
 
-respond :: Handle -> Text -> Packet -> AuthState ()
+respond :: LogIO m => Handle -> Text -> Packet -> AuthState m ()
 respond h text packet =
     case text of
         "NICK" -> case pktArguments packet of
@@ -79,7 +80,7 @@ respond h text packet =
                           write h . render $ errNoSuchChannel n r
         _ -> return ()
 
-getAuthInfo :: Handle -> AuthState (Maybe (Username, Text, S.Set Chatroom))
+getAuthInfo :: LogIO m => Handle -> AuthState m (Maybe (Username, Text, S.Set Chatroom))
 getAuthInfo h = fix $ \f -> do
     line <- liftIO $ hGetLine h
     $logDebug line
@@ -92,13 +93,13 @@ getAuthInfo h = fix $ \f -> do
             liftIO $ fmap (fmap (uname, , js)) $ getToken u p
         _ -> f
 
-authFailure :: Handle -> AuthState ()
+authFailure :: LogIO m => Handle -> AuthState m ()
 authFailure h = do
     uname <- use $ acUsername . _Just
     write h . render $ errPasswordMismatch uname
     acPassword .= Nothing
 
-authSuccess :: Handle -> AuthState ()
+authSuccess :: LogIO m => Handle -> AuthState m ()
 authSuccess h = do
     uname <- use $ acUsername . _Just
     write h . render $ rplNotify uname "Got a token."

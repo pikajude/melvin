@@ -27,8 +27,6 @@ import Network
 import System.IO
 import System.Mem
 
-type LogIO m = (MonadLogger m, MonadIO m)
-
 doAMelvin :: Mopts -> [String] -> IO ()
 doAMelvin Mopts { moptPort = p
                 , moptMaxClients = _

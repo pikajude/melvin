@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -10,6 +11,7 @@ module Melvin.Prelude (
   module X,
   st,
   stP,
+  LogIO,
 
   -- retconned Prelude functions
   (++),
@@ -50,6 +52,8 @@ import qualified Prelude as P
 import           System.IO as X                  (Handle, hClose, hFlush, hIsClosed, hIsEOF)
 import           Text.Printf.TH
 
+type LogIO m = (MonadLogger m, MonadIO m)
+
 -- | Simple utility functions.
 show :: Show a => a -> Text
 show = pack . P.show
@@ -59,7 +63,7 @@ show = pack . P.show
 
 -- | Dealing with the underlying Proxy monad upon which Melvin clients are
 -- based.
-runMelvin :: (Functor m, MonadCatch m, MonadIO m) => s -> Effect (SafeT (StateT s (LoggingT m))) r -> LoggingT m (Either SomeException r)
+runMelvin :: (LogIO m, MonadCatch m) => s -> Effect (SafeT (StateT s m)) r -> m (Either SomeException r)
 runMelvin st_ m = catch
     (liftM Right $ evalStateT (runSafeT $ runEffect m) st_)
     (\e -> return (Left e))
