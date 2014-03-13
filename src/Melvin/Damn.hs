@@ -177,11 +177,16 @@ res_property Packet { pktParameter = p
                 writeClient $ rplTopic user channel (T.cons ':' . T.intercalate " | " . linesOf $ delump b)
                 writeClient $ rplTopicWhoTime user channel (args ^. ix "by") (args ^. ix "ts")
 
-        "title" -> logInfo $ [st|Received title for %s: %s|] channel (body ^. _Just)
+        "title" -> $logInfo $ [st|Received title for %s: %s|] channel (body ^. _Just)
 
         "privclasses" -> do
-            logInfo $ [st|Received privclasses for %s|] channel
-            setPrivclasses channel $ body ^. _Just
+            $logInfo $ [st|Received privclasses for %s|] channel
+            joining' <- getsState (view joining)
+            unless (channel `S.member` joining') $ do
+                $logDebug $ [st|Got privclasses, but finished joining!|]
+                $logDebug $ [st|%?|] (toPrivclasses (body ^. _Just))
+            modifyState $ privclasses . at (toChatroom channel ^?! _Just) ?~
+                toPrivclasses (body ^. _Just)
 
         "members" -> do
             setMembers channel $ body ^. _Just
@@ -194,20 +199,17 @@ res_property Packet { pktParameter = p
                 writeClient $ cmdModeUpdate channel user Nothing (mypc >>= asMode)
                 modifyState (joining %~ S.delete channel)
 
-        x -> logError $ [st|Unhandled property %s|] x
+        x -> $logError $ [st|Unhandled property %s|] x
 
     return True
     where
-        setPrivclasses c b = do
-            let pcs = toPrivclasses $
-                  ((T.decimal *** T.tail) . T.breakOn ":") <$> T.splitOn "\n" b
-                chat = toChatroom c ^?! _Just
-            modifyState (privclasses . at chat ?~ pcs)
+        toPrivclasses bod = go $ ((T.decimal *** T.tail) . T.breakOn ":")
+            <$> T.splitOn "\n" bod
 
         -- decimal x returns a thing like Right (number, text)
-        toPrivclasses ((Right (n,_),t):ns) = M.insert t (mkPrivclass n t) (toPrivclasses ns)
-        toPrivclasses ((Left _,_):ns) = toPrivclasses ns
-        toPrivclasses [] = M.empty
+        go ((Right (n,_),t):ns) = M.insert t (mkPrivclass n t) (go ns)
+        go ((Left _,_):ns) = go ns
+        go [] = M.empty
 
         setMembers c b = do
             let chat = toChatroom c ^?! _Just
@@ -347,18 +349,30 @@ res_recv_admin :: RecvCallback
 res_recv_admin parent pkt@Packet { pktParameter = cmd } = case cmd of
     Just "create" -> res_recv_admin_update True parent pkt
     Just "update" -> res_recv_admin_update False parent pkt
-    _ -> const $ True <$ logError ([st|Unhandled admin packet: %?|] parent)
+    Just "remove" -> res_recv_admin_remove parent pkt
+    _ -> const $ True <$ $logError ([st|Unhandled admin packet: %?|] pkt)
 
 res_recv_admin_update :: Bool -> RecvCallback
 res_recv_admin_update b
                       Packet { pktParameter = p }
                       Packet { pktArgs = args }
-                      sta = do
+                      _st = do
     channel <- toChannel $ p ^. _Just
     writeClient $ (if b then cmdPcCreate else cmdPcUpdate)
         channel
         (args ^. ix "name")
         (args ^. ix "privs")
+        (args ^. ix "by")
+    return True
+
+res_recv_admin_remove :: RecvCallback
+res_recv_admin_remove Packet { pktParameter = p }
+                      Packet { pktArgs = args }
+                      _st = do
+    channel <- toChannel $ p ^. _Just
+    writeClient $ cmdPcRemove
+        channel
+        (args ^. ix "name")
         (args ^. ix "by")
     return True
 

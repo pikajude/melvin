@@ -3,4 +3,4 @@ import Melvin.Options
 import Prelude
 
 main :: IO ()
-main = options >>= doAMelvin
+main = runCommand doAMelvin

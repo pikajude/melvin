@@ -1,54 +1,28 @@
 module Melvin.Options (
-  Options(..),
-  options
+  Mopts(..),
+  module Options
 ) where
 
-import Data.Ix
+import Control.Applicative
 import Data.Word
 import Network
-import Options.Applicative
+import Options
 import Prelude
 
-data Options = Options
-    { optionPort       :: PortID
-    , optionMaxClients :: Maybe Integer
+data Mopts = Mopts
+    { moptPort       :: PortID
+    , moptMaxClients :: Maybe Word8
     }
 
-opts :: Parser Options
-opts = Options
-    <$> nullOption
-        ( long "port"
-       <> short 'p'
-       <> metavar "PORT"
-       <> help "Port to listen on"
-       <> value (PortNumber 6667)
-       <> reader portNumReader )
-    <*> optional
-        (option
-            ( long "max-clients"
-           <> short 'm'
-           <> metavar "COUNT"
-           <> help "Maximum number of clients to handle (default: unlimited)"
-           <> reader maxClientsReader ))
-
-maxClientsReader :: String -> Either ParseError Integer
-maxClientsReader s =
-    case reads s of
-        [] -> fail $ s ++ " isn't a number"
-        ((c,_):_) -> if c < 1
-                         then fail "Max clients can't be less than 1."
-                         else Right c
-
-portNumReader :: String -> Either ParseError PortID
-portNumReader s =
-    case reads s of
-        [] -> fail "Parsing port number failed"
-        ((p,_):_) -> if inRange bounds p
-                         then Right $ PortNumber (fromIntegral p)
-                         else fail "Port number invalid."
-    where bounds :: (Integer, Integer)
-          bounds = (fromIntegral (minBound :: Word16), fromIntegral (maxBound :: Word16))
-
-options :: IO Options
-options = execParser $ info (helper <*> opts)
-    (fullDesc <> header "melvin -- a dAmn <-> IRC server")
+instance Options Mopts where
+    defineOptions = Mopts . PortNumber . toEnum . fromEnum
+        <$> defineOption optionType_word16 (\o -> o
+            { optionLongFlags = ["port"]
+            , optionShortFlags = "p"
+            , optionDefault = 6667
+            , optionDescription = "Port to listen on" })
+        <*> defineOption (optionType_maybe optionType_word8) (\o -> o
+            { optionLongFlags = ["max-clients"]
+            , optionShortFlags = "c"
+            , optionDefault = Nothing
+            , optionDescription = "Maximum number of clients to allow" })

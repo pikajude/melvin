@@ -27,16 +27,18 @@ executable melvin
                     , bytestring
                     , containers
                     , cprng-aes
-                    , damnpacket >= 0.1.2
+                    , damnpacket >= 0.6
                     , data-default
                     , deepseq
+                    , exceptions
                     , file-location
                     , HTTP
                     , lens >= 3.9
+                    , monad-logger
                     , mtl
                     , network
                     , old-locale
-                    , optparse-applicative == 0.5.*
+                    , options >= 1.0
                     , parsec
                     , pipes >= 4.0
                     , pipes-safe >= 2.0

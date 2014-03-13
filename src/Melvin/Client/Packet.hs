@@ -18,6 +18,7 @@ module Melvin.Client.Packet (
 
   cmdPcCreate,
   cmdPcUpdate,
+  cmdPcRemove,
   cmdPcMove,
   cmdModeUpdate,
 
@@ -108,7 +109,7 @@ cmdPrivaction n channel text = Packet (hostOf n) "PRIVMSG"
     [channel, ac . bullets $ text]
     where ac m = "\1ACTION " ++ m ++ "\1"
 
-cmdPart, cmdModeChange :: Text -> Text -> Text -> Packet
+cmdPart, cmdModeChange, cmdPcRemove :: Text -> Text -> Text -> Packet
 cmdPart n channel reason = Packet (hostOf n) "PART" [channel, reason]
 cmdModeChange channel u m = cmdModeUpdate channel u Nothing (Just m)
 
@@ -121,6 +122,9 @@ cmdPcCreate channel pcname privs creator = Packet (Just "dAmn") "NOTICE"
 
 cmdPcUpdate channel pcname privs creator = Packet (Just "dAmn") "NOTICE"
     [channel, [st|%s has updated group %s with privileges: %s|] creator pcname privs]
+
+cmdPcRemove channel pcname remover = Packet (Just "dAmn") "NOTICE"
+    [channel, [st|%s has deleted group %s|] remover pcname]
 
 cmdModeUpdate :: Text -> Text -> Maybe Text -> Maybe Text -> Packet
 cmdModeUpdate channel u old new = Packet (Just "dAmn") "MODE"
