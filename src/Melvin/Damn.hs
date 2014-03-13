@@ -20,7 +20,6 @@ import           Melvin.Client.Packet hiding (Packet(..), parse, render)
 import qualified Melvin.Damn.Actions as Damn
 import           Melvin.Damn.Tablumps
 import           Melvin.Exception
-import           Melvin.Logger
 import           Melvin.Prelude
 import           Melvin.Types
 import           Pipes.Safe
@@ -41,7 +40,7 @@ hGetTillNull h = do
 
 handler :: SomeException -> ClientT ()
 handler ex | Just (ClientSocketErr e) <- fromException ex = do
-    logWarning $ [st|Server thread hit an exception, but client disconnected (%?), so nothing to do.|] e
+    $logWarn $ [st|Server thread hit an exception, but client disconnected (%?), so nothing to do.|] e
     throwM ex
 handler ex = do
     uname <- lift $ use username
@@ -64,7 +63,7 @@ packetStream mv = bracket
         isClosed <- liftIO $ hIsClosed h
         when (isEOF || isClosed) $ throwM (ServerDisconnect "socket closed")
         line <- liftIO $ hGetTillNull h
-        lift . logWarning $ show $ cleanup line
+        lift . $logDebug $ show $ cleanup line
         case parse $ cleanup line of
             Left e -> throwM $ ServerNoParse e line
             Right pk -> do
@@ -79,7 +78,7 @@ responder = handle (lift . handler) $ fix $ \f -> do
     p <- await
     continue <- case M.lookup (pktCommand p) responses of
         Nothing -> do
-            lift . logInfo $ [st|Unhandled packet from damn: %?|] p
+            lift . $logInfo $ [st|Unhandled packet from damn: %?|] p
             return False
         Just callback -> do
             sta <- lift $ lift get
@@ -120,7 +119,7 @@ recv_responses = M.fromList [ ("msg", res_recv_msg)
 res_dAmnServer :: Callback
 res_dAmnServer _ sta = do
     let (num, (user, tok)) = (clientNumber &&& view username &&& view token) sta
-    logInfo $ [st|Client #%d handshook successfully.|] num
+    $logInfo $ [st|Client #%d handshook successfully.|] num
     writeServer $ Damn.login user tok
     return True
 
@@ -177,14 +176,14 @@ res_property Packet { pktParameter = p
                 writeClient $ rplTopic user channel (T.cons ':' . T.intercalate " | " . linesOf $ delump b)
                 writeClient $ rplTopicWhoTime user channel (args ^. ix "by") (args ^. ix "ts")
 
-        "title" -> logInfo $ [st|Received title for %s: %s|] channel (body ^. _Just)
+        "title" -> $logInfo $ [st|Received title for %s: %s|] channel (body ^. _Just)
 
         "privclasses" -> do
-            logInfo $ [st|Received privclasses for %s|] channel
+            $logInfo $ [st|Received privclasses for %s|] channel
             joining' <- getsState (view joining)
             unless (channel `S.member` joining') $ do
-                logInfo $ [st|Got privclasses, but finished joining!|]
-                logInfo $ [st|%?|] (toPrivclasses (body ^. _Just))
+                $logDebug $ [st|Got privclasses, but finished joining!|]
+                $logDebug $ [st|%?|] (toPrivclasses (body ^. _Just))
             modifyState $ privclasses . at (toChatroom channel ^?! _Just) ?~
                 toPrivclasses (body ^. _Just)
 
@@ -199,7 +198,7 @@ res_property Packet { pktParameter = p
                 writeClient $ cmdModeUpdate channel user Nothing (mypc >>= asMode)
                 modifyState (joining %~ S.delete channel)
 
-        x -> logError $ [st|Unhandled property %s|] x
+        x -> $logError $ [st|Unhandled property %s|] x
 
     return True
     where
@@ -249,9 +248,9 @@ res_disconnect Packet { pktArgs = args } sta = do
 
 res_recv :: Callback
 res_recv pk sta = case pk ^. pktSubpacketL of
-    Nothing -> True <$ logError ([st|Received an empty recv packet: %?|] pk)
+    Nothing -> True <$ $logError ([st|Received an empty recv packet: %?|] pk)
     Just spk -> case M.lookup (pktCommand spk) recv_responses of
-                    Nothing -> True <$ logError ([st|Unhandled recv packet: %?|] spk)
+                    Nothing -> True <$ $logError ([st|Unhandled recv packet: %?|] spk)
                     Just c -> c pk spk sta
 
 res_recv_msg :: RecvCallback
@@ -350,7 +349,7 @@ res_recv_admin parent pkt@Packet { pktParameter = cmd } = case cmd of
     Just "create" -> res_recv_admin_update True parent pkt
     Just "update" -> res_recv_admin_update False parent pkt
     Just "remove" -> res_recv_admin_remove parent pkt
-    _ -> const $ True <$ logError ([st|Unhandled admin packet: %?|] pkt)
+    _ -> const $ True <$ $logError ([st|Unhandled admin packet: %?|] pkt)
 
 res_recv_admin_update :: Bool -> RecvCallback
 res_recv_admin_update b

@@ -31,12 +31,14 @@ module Melvin.Prelude (
 import           Control.Applicative
 import           Control.Lens as X hiding        (Level)
 import           Control.Monad.IO.Class
+import           Control.Monad.Logger as X
 import           Control.Monad.State as X hiding (join)
 import           Data.Monoid as X
 import           Data.Text                       (Text, pack)
 import qualified Data.Text.IO as IO
-import           Data.Text.Lazy                  (toStrict)
 import           FileLocation as X
+import           Melvin.Internal.Orphans as X    ()
+import           Melvin.Internal.MonadAsync as X
 import           Pipes as X hiding               (each, (<~))
 import           Pipes.Safe
 import           Prelude as X hiding             ((++), putStrLn, print, show, lines
@@ -57,5 +59,7 @@ show = pack . P.show
 
 -- | Dealing with the underlying Proxy monad upon which Melvin clients are
 -- based.
-runMelvin :: s -> Effect (SafeT (StateT s IO)) r -> IO (Either SomeException r)
-runMelvin st m = fmap Right (evalStateT (runSafeT $ runEffect m) st) `catch` (return . Left)
+runMelvin :: (Functor m, MonadCatch m, MonadIO m) => s -> Effect (SafeT (StateT s (LoggingT m))) r -> LoggingT m (Either SomeException r)
+runMelvin st_ m = catch
+    (liftM Right $ evalStateT (runSafeT $ runEffect m) st_)
+    (\e -> return (Left e))

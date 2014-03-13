@@ -63,7 +63,6 @@ import           Data.Set
 import           Data.Text
 import           Melvin.Client.Packet
 import           Melvin.Exception
-import           Melvin.Logger
 import           Melvin.Prelude hiding    (cons)
 import           Pipes.Safe
 import qualified Text.Damn.Packet as D
@@ -147,29 +146,31 @@ data ClientSettings = ClientSettings
 
 makeLenses ''ClientSettings
 
-type ClientT = SafeT (StateT ClientSettings IO)
+type ClientT = SafeT (StateT ClientSettings (LoggingT IO))
 
 writeClient :: Packet -> ClientT ()
 writeClient text = do
     (mv, h) <- lift $ gets (view clientWriteLock &&& view clientHandle)
-    liftIO $ E.bracket_
-        (takeMVar mv)
-        (putMVar mv ())
-        ((hPutStr h r >> logInfoIO r) `E.catch` fallback)
+    bracket_
+        (liftIO $ takeMVar mv)
+        (liftIO $ putMVar mv ())
+        ((liftIO (hPutStr h r) >> $logDebug r) `catch` fallback)
     where fallback e = do
-            logWarningIO $ "(write failed) " ++ r
+            $logError $ "(write failed) " ++ r
             E.throw $ ClientSocketErr e
           r = render text
 
 writeServer :: D.Packet -> ClientT ()
 writeServer text = do
     (mv, h) <- lift $ gets (view serverWriteLock &&& view serverMVar)
-    liftIO $ E.bracket
-        (takeMVar mv >> readMVar h)
-        (\_ -> putMVar mv ())
-        (\hndl -> (hPutStr hndl (D.render text ++ "\n\0") >> logInfoIO (show text)) `E.catch` fallback)
+    bracket
+        (liftIO $ takeMVar mv >> readMVar h)
+        (\_ -> liftIO $ putMVar mv ())
+        (\hndl -> (do
+            liftIO $ hPutStr hndl (D.render text ++ "\n\0")
+            $logDebug (show text)) `catch` fallback)
     where fallback e = do
-            logWarningIO $ "(write failed) " ++ show text
+            $logError $ "(write failed) " ++ show text
             E.throw $ ServerSocketErr e
 
 killClient :: ClientT ()
@@ -177,7 +178,7 @@ killClient = do
     ct <- lift $ use clientThreadId
     tid <- liftIO $ tryTakeMVar ct
     case tid of
-        Nothing -> logWarning "Client thread is already dead."
+        Nothing -> $logWarn "Client thread is already dead."
         Just t -> liftIO $ cancel t
 
 killServer :: ClientT ()
@@ -185,7 +186,7 @@ killServer = do
     ct <- lift $ use serverThreadId
     tid <- liftIO $ tryTakeMVar ct
     case tid of
-        Nothing -> logWarning "Server thread is already dead."
+        Nothing -> $logWarn "Server thread is already dead."
         Just t -> liftIO $ cancel t
 
 modifyState :: (ClientState -> ClientState) -> ClientT ()

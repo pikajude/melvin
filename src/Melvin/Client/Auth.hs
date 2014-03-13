@@ -6,14 +6,13 @@ module Melvin.Client.Auth (
     authenticate
 ) where
 
-import           Control.Exception
+import           Control.Monad.Catch
 import           Control.Monad.State
 import           Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
 import           Melvin.Chatrooms hiding (render)
 import           Melvin.Client.Packet
-import           Melvin.Logger
 import           Melvin.Prelude hiding   (get)
 import           Melvin.Token
 import           Melvin.Types            (Chatroom)
@@ -28,12 +27,12 @@ data AuthClient = AuthClient
 makeLenses ''AuthClient
 
 type Username = Text
-type AuthState = StateT AuthClient IO
+type AuthState = StateT AuthClient (LoggingT IO)
 
-authHandler :: SomeException -> IO (Either SomeException (Username, Text, S.Set Chatroom))
+authHandler :: SomeException -> LoggingT IO (Either SomeException (Username, Text, S.Set Chatroom))
 authHandler = return . Left
 
-authenticate :: Handle -> IO (Either SomeException (Username, Text, S.Set Chatroom))
+authenticate :: Handle -> LoggingT IO (Either SomeException (Username, Text, S.Set Chatroom))
 authenticate h = handle authHandler $
     (`evalStateT` AuthClient Nothing Nothing Nothing mempty) . fix $ \f -> do
         ai <- getAuthInfo h
@@ -83,7 +82,7 @@ respond h text packet =
 getAuthInfo :: Handle -> AuthState (Maybe (Username, Text, S.Set Chatroom))
 getAuthInfo h = fix $ \f -> do
     line <- liftIO $ hGetLine h
-    logInfoIO line
+    $logDebug line
     respond h =<< pktCommand $ parse line
     ac <- get
     case ac of
@@ -104,7 +103,7 @@ authSuccess h = do
     uname <- use $ acUsername . _Just
     write h . render $ rplNotify uname "Got a token."
 
-write :: MonadIO m => Handle -> Text -> m ()
+write :: (MonadLogger m, MonadIO m) => Handle -> Text -> m ()
 write h s = do
-    logInfoIO $ fromMaybe s $ T.stripSuffix "\r\n" s
+    $logDebug $ fromMaybe s $ T.stripSuffix "\r\n" s
     liftIO $ hPutStr h s

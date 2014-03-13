@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 704
@@ -5,13 +6,13 @@
 #else
 {-# LANGUAGE RecursiveDo #-}
 #endif
+{-# LANGUAGE TemplateHaskell #-}
 
 module Melvin (
   doAMelvin
 ) where
 
 import Control.Concurrent
-import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.Fix
 import Data.Set
@@ -19,7 +20,6 @@ import Melvin.Client as Client
 import Melvin.Damn as Damn
 import Melvin.Client.Auth
 import Melvin.Exception
-import Melvin.Logger
 import Melvin.Prelude hiding    (index, set)
 import Melvin.Options
 import Melvin.Types
@@ -27,27 +27,29 @@ import Network
 import System.IO
 import System.Mem
 
+type LogIO m = (MonadLogger m, MonadIO m)
+
 doAMelvin :: Mopts -> [String] -> IO ()
 doAMelvin Mopts { moptPort = p
                 , moptMaxClients = _
-                } _args = do
-    startLogger
-    server <- listenOn p
+                } _args = runStdoutLoggingT $ do
+    $logInfo $ "Listening on port " ++ show p ++ "."
+    server <- liftIO $ listenOn p
     forM_ [1..] $ \i -> do
-        triple <- accept server
+        triple <- liftIO $ accept server
         async $ do
             runClientPair i triple
-            performGC
+            liftIO performGC
 
-runClientPair :: Integer -> (Handle, String, t) -> IO ()
+runClientPair :: Integer -> (Handle, String, t) -> LoggingT IO ()
 runClientPair index (h, host, _) = do
-    logInfoIO $ "Client #" ++ show index ++ " has connected from " ++ pack host
-    hSetEncoding h utf8
+    $logInfo $ "Client #" ++ show index ++ " has connected from " ++ pack host
+    liftIO $ hSetEncoding h utf8
     tokpair <- authenticate h
     case tokpair of
         Left e -> do
-            logWarningIO $ "Client #" ++ show index ++ " couldn't authenticate: " ++ show e
-            hClose h
+            $logWarn $ "Client #" ++ show index ++ " couldn't authenticate: " ++ show e
+            liftIO $ hClose h
         Right (uname, token_, rs) -> do
             set <- buildClientSettings index h uname token_ rs
 
@@ -56,9 +58,9 @@ runClientPair index (h, host, _) = do
             -- This isn't retried, unlike dAmn, because if the client exits
             -- nobody really cares what happened on dAmn
             rec client <- async $ do
-                 putMVar (set ^. clientThreadId) client
+                 liftIO $ putMVar (set ^. clientThreadId) client
                  m <- runMelvin set $ Client.packetStream h >-> Client.responder
-                 performGC
+                 liftIO performGC
                  return m
 
             -- | Run the server thread.
@@ -67,12 +69,12 @@ runClientPair index (h, host, _) = do
             -- are recoverable. If so, it increments the reconnect time by
             -- 5.
             rec server <- async $ do
-                 putMVar (set ^. serverThreadId) server
+                 liftIO $ putMVar (set ^. serverThreadId) server
                  fix (\f settings -> do
                      insertDamn settings
                      result <- runMelvin settings $
                          Damn.packetStream (set ^. serverMVar) >-> Damn.responder
-                     performGC
+                     liftIO performGC
                      case result of
                          r@Right{..} -> return r
                          Left e -> if isRetryable e
@@ -81,12 +83,12 @@ runClientPair index (h, host, _) = do
 
             result <- liftM2 (,) (wait client) (wait server)
             case result of
-                (Right{..}, Right{..}) -> logInfoIO $ [st|Client #%d exited cleanly|] index
-                (Left m, _) -> logErrorIO $ [st|Client #%d encountered an error: %?|] index m
-                (_, Left m) -> logErrorIO $ [st|Client #%d's server encountered an error: %?|] index m
+                (Right{..}, Right{..}) -> $logInfo $ [st|Client #%d exited cleanly|] index
+                (Left m, _) -> $logWarn $ [st|Client #%d encountered an error: %?|] index m
+                (_, Left m) -> $logWarn $ [st|Client #%d's server encountered an error: %?|] index m
 
-buildClientSettings :: Integer -> Handle -> Text -> Text -> Set Chatroom -> IO ClientSettings
-buildClientSettings i h u t j = do
+buildClientSettings :: LogIO m => Integer -> Handle -> Text -> Text -> Set Chatroom -> m ClientSettings
+buildClientSettings i h u t j = liftIO $ do
     sc <- newMVar ()
     cc <- newMVar ()
     mv1 <- newEmptyMVar
@@ -113,8 +115,8 @@ buildClientSettings i h u t j = do
         , _clientState     = csm
         }
 
-insertDamn :: ClientSettings -> IO ()
-insertDamn ClientSettings { _serverMVar = m } = do
+insertDamn :: LogIO m => ClientSettings -> m ()
+insertDamn ClientSettings { _serverMVar = m } = liftIO $ do
     void $ tryTakeMVar m
     h <- connectTo "chat.deviantart.com" (PortNumber 3900)
     putMVar m h

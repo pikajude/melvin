@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Melvin.Client (
   packetStream,
   responder
@@ -12,14 +14,13 @@ import qualified Data.Text as T
 import           Melvin.Chatrooms
 import           Melvin.Client.Packet hiding (render)
 import qualified Melvin.Damn.Actions as Damn
-import           Melvin.Logger
 import           Melvin.Prelude
 import           Melvin.Types
 import           Pipes.Safe
 
 handler :: SomeException -> ClientT ()
 handler ex = do
-    logError $ show ex
+    $logError $ show ex
     killServer
     throwM ex
 
@@ -32,7 +33,7 @@ packetStream hndl = bracket
         isClosed <- liftIO $ hIsClosed h
         unless (isEOF || isClosed) $ do
             line <- liftIO $ hGetLine h
-            lift $ logInfo line
+            lift $ $logDebug line
             yield $ parse line
             f)
 
@@ -41,7 +42,7 @@ responder = handle (lift . handler) $ fix $ \f -> do
     p <- await
     continue <- case M.lookup (pktCommand p) responses of
         Nothing -> do
-            lift . logInfo $ [st|Unhandled packet from client: %?|] p
+            lift . $logInfo $ [st|Unhandled packet from client: %?|] p
             return False
         Just callback -> do
             sta <- lift $ lift get
@@ -65,7 +66,7 @@ responses = M.fromList [ ("QUIT", res_quit)
 
 res_quit :: Callback
 res_quit _ sta = do
-    logInfo $ [st|Client #%d quit cleanly.|] (clientNumber sta)
+    $logInfo $ [st|Client #%d quit cleanly.|] (clientNumber sta)
     writeServer Damn.disconnect
     return False
 
@@ -76,7 +77,7 @@ res_ping Packet { pktArguments = args } _ = do
 
 res_mode :: Callback
 res_mode p _ = do
-    logInfo $ [st|Received mode command, should handle: %?|] p
+    $logInfo $ [st|Received mode command, should handle: %?|] p
     return True
 
 res_join :: Callback
