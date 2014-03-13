@@ -12,7 +12,6 @@ author:              Joel Taylor
 maintainer:          me@joelt.io
 category:            Network
 build-type:          Simple
--- extra-source-files:  
 cabal-version:       >=1.10
 
 Flag error
@@ -55,19 +54,24 @@ executable melvin
   hs-source-dirs:     src
   default-language:   Haskell2010
   default-extensions: NoImplicitPrelude, OverloadedStrings, QuasiQuotes
-  ghc-options:        -Wall -Werror
+  ghc-options:        -Wall
+
+  If flag(error)
+    ghc-options:      -Werror
 
 library
   exposed-modules:    Melvin.Damn.Tablumps
   other-modules:      Melvin.Exception
   hs-source-dirs:     src
   build-depends:      base
+                    , async
                     , attoparsec
                     , containers
                     , data-default
                     , deepseq
                     , file-location
                     , lens
+                    , monad-logger
                     , mtl
                     , pipes
                     , pipes-safe
