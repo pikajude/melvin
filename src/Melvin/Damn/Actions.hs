@@ -39,14 +39,14 @@ part r = do
 msg :: Chatroom -> Text -> ClientT Packet
 msg c m = do
     room <- render c
-    let subpkt = Packet "msg" (Just "main") mempty (Just $ escape m)
+    let subpkt = Packet "msg" (Just "main") mempty (Just . binary $ escape m)
         parent = Packet "send" (Just room) mempty Nothing & pktSubpacketL ?~ subpkt
     return parent
 
 action :: Chatroom -> Text -> ClientT Packet
 action c m = do
     room <- render c
-    let subpkt = Packet "action" (Just "main") mempty (Just $ escape m)
+    let subpkt = Packet "action" (Just "main") mempty (Just . binary $ escape m)
         parent = Packet "send" (Just room) mempty Nothing & pktSubpacketL ?~ subpkt
     return parent
 

@@ -38,7 +38,8 @@ module Melvin.Client.Packet (
 
 import           Control.Applicative         ((*>), (<*), (<|>))
 import           Control.Monad
-import           Data.Attoparsec.Text hiding (parse)
+import           Data.Attoparsec.ByteString.Char8 hiding (parse)
+import qualified Data.ByteString as B
 import           Data.Char
 import           Data.Maybe
 import qualified Data.Text as T
@@ -51,7 +52,7 @@ data Packet = Packet
         , pktArguments :: [Text]
         } deriving Show
 
-parse :: Text -> Packet
+parse :: ByteString -> Packet
 parse text = case parseOnly parser text of
     Left e -> $err' $ "Parsing failed (" ++ P.show e ++ ") for packet: " ++ P.show text
     Right pk -> pk
@@ -61,9 +62,9 @@ parser = do
     prefix <- option Nothing prefixP
     command <- T.toUpper <$> commandP
     spaces
-    params <- filter (not . T.null) <$> paramsP
+    params <- filter (not . B.null) <$> paramsP
     _ <- option "" crlf
-    return $ Packet prefix command params
+    return $ Packet (utf8 <$> prefix) command (map utf8 params)
     where
         crlf = string "\r\n"
         badChars = "\x20\x00\x0d\x0a"
@@ -75,17 +76,17 @@ parser = do
         paramsP = (colonP <|> noColonP) `sepBy` spaces
         colonP = char ':' *> takeWhile (notInClass "\x00\x0d\x0a")
         noColonP = takeWhile (notInClass badChars)
-        commandP = takeWhile1 isAlpha
+        commandP = fmap utf8 (takeWhile1 isAlpha)
                <|> (T.pack <$> count 3 digit)
 
-render :: Packet -> Text
-render (Packet pr c args) = maybe "" ((++" ") . T.cons ':') pr
-                         ++ c
+render :: Packet -> ByteString
+render (Packet pr c args) = binary (maybe "" ((++" ") . T.cons ':') pr)
+                         ++ binary c
                          ++ (if null args then "" else " ")
-                         ++ T.unwords (showArgs args)
+                         ++ B.intercalate " " (showArgs $ map binary args)
                          ++ "\r\n"
-    where showArgs [a] | T.head a == ':' = [a]
-                       | " " `T.isInfixOf` a || T.null a = [':' `T.cons` a]
+    where showArgs [a] | B.head a == 58 = [a]
+                       | " " `B.isInfixOf` a || B.null a = [58 `B.cons` a]
                        | otherwise = [a]
           showArgs (a:as) = a:showArgs as
           showArgs []     = mempty

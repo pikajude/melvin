@@ -45,10 +45,10 @@ greet h Packet {
       pktArguments = (nick:_)
     } = do
     acNick .= Just nick
-    write h $ [st|:chat.deviantart.com 001 %s :Welcome to dAmn %s!%s@chat.deviantart.com\r\n|] nick nick nick
-    write h $ [st|:chat.deviantart.com 002 %s :Your host is chat.deviantart.com, running dAmnServer 0.3\r\n|] nick
-    write h $ [st|:chat.deviantart.com 004 %s chat.deviantart.com dAmnServer0.3 qov i\r\n|] nick
-    write h $ [st|:chat.deviantart.com 005 %s PREFIX=(qov)~@+\r\n|] nick
+    write h $ [sb|:chat.deviantart.com 001 %s :Welcome to dAmn %s!%s@chat.deviantart.com\r\n|] nick nick nick
+    write h $ [sb|:chat.deviantart.com 002 %s :Your host is chat.deviantart.com, running dAmnServer 0.3\r\n|] nick
+    write h $ [sb|:chat.deviantart.com 004 %s chat.deviantart.com dAmnServer0.3 qov i\r\n|] nick
+    write h $ [sb|:chat.deviantart.com 005 %s PREFIX=(qov)~@+\r\n|] nick
 greet h _ = write h . render $ errNoNicknameGiven "stupid"
 
 respond :: LogIO m => Handle -> Text -> Packet -> AuthState m ()
@@ -78,7 +78,7 @@ respond h text packet =
 getAuthInfo :: LogIO m => Handle -> AuthState m (Maybe (Username, Text, S.Set Chatroom))
 getAuthInfo h = fix $ \f -> do
     line <- liftIO $ hGetLine h
-    $logDebug line
+    $logDebug (utf8 line)
     respond h =<< pktCommand $ parse line
     ac <- get
     case ac of
@@ -99,7 +99,7 @@ authSuccess h = do
     uname <- use $ acUsername . _Just
     write h . render $ rplNotify uname "Got a token."
 
-write :: (MonadLogger m, MonadIO m) => Handle -> Text -> m ()
+write :: (MonadLogger m, MonadIO m) => Handle -> ByteString -> m ()
 write h s = do
-    $logDebug $ fromMaybe s $ T.stripSuffix "\r\n" s
+    $logDebug $ fromMaybe (utf8 s) $ T.stripSuffix "\r\n" (utf8 s)
     liftIO $ hPutStr h s

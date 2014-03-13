@@ -10,6 +10,7 @@ import           Control.Arrow
 import           Control.Concurrent hiding   (yield)
 import           Control.Monad
 import           Control.Monad.Fix
+import qualified Data.ByteString as B
 import qualified Data.Map as M
 import           Data.Maybe
 import qualified Data.Set as S
@@ -23,19 +24,19 @@ import           Melvin.Exception
 import           Melvin.Prelude
 import           Melvin.Types
 import           Pipes.Safe
-import           System.IO hiding            (isEOF, print, putStrLn)
+import           System.IO hiding            (isEOF, print, putStrLn, utf8)
 import           System.IO.Error
 import           Text.Damn.Packet hiding     (render)
 
-hGetTillNull :: Handle -> IO Text
+hGetTillNull :: Handle -> IO B.ByteString
 hGetTillNull h = do
     ready <- hWaitForInput h 180000
     if ready
         then do
-            ch <- hGetChar h
-            if ch == '\0'
+            str <- B.hGet h 1
+            if str == "\0"
                 then return mempty
-                else fmap (T.cons ch) $ hGetTillNull h
+                else fmap (str <>) $ hGetTillNull h
         else $thrwIO $ mkIOError eofErrorType "read timeout" (Just h) . Just
 
 handler :: SomeException -> ClientT ()
@@ -69,9 +70,9 @@ packetStream mv = bracket
             Right pk -> do
                 yield pk
                 f)
-    where cleanup m = case T.stripSuffix "\n" m of
-                         Nothing -> m
-                         Just s -> cleanup s
+    where cleanup m = if B.isSuffixOf "\n" m
+                          then cleanup (B.init m)
+                          else m
 
 responder :: Consumer Packet ClientT ()
 responder = handle (lift . handler) $ fix $ \f -> do
@@ -173,7 +174,7 @@ res_property Packet { pktParameter = p
         "topic" -> case body of
             Nothing -> writeClient $ rplNoTopic user channel "No topic is set"
             Just b -> do
-                writeClient $ rplTopic user channel (T.cons ':' . T.intercalate " | " . linesOf $ delump b)
+                writeClient $ rplTopic user channel (T.cons ':' . T.intercalate " | " . linesOf $ delump $ utf8 b)
                 writeClient $ rplTopicWhoTime user channel (args ^. ix "by") (args ^. ix "ts")
 
         "title" -> $logInfo $ [st|Received title for %s: %s|] channel (body ^. _Just)
@@ -183,12 +184,12 @@ res_property Packet { pktParameter = p
             joining' <- getsState (view joining)
             unless (channel `S.member` joining') $ do
                 $logDebug $ [st|Got privclasses, but finished joining!|]
-                $logDebug $ [st|%?|] (toPrivclasses (body ^. _Just))
+                $logDebug $ [st|%?|] (toPrivclasses (body ^. _Just . to utf8))
             modifyState $ privclasses . at (toChatroom channel ^?! _Just) ?~
-                toPrivclasses (body ^. _Just)
+                toPrivclasses (body ^. _Just . to utf8)
 
         "members" -> do
-            setMembers channel $ body ^. _Just
+            setMembers channel $ body ^. _Just . to utf8
             joining' <- getsState (view joining)
             when (channel `S.member` joining') $ do
                 let room = toChatroom channel ^?! _Just
@@ -260,7 +261,7 @@ res_recv_msg Packet { pktParameter = p }
                     } sta = do
     channel <- toChannel $ $fromJst p
     unless (sta ^. username == args ^. ix "from") $
-        forM_ (linesOf . delump $ b ^. _Just) $ \line ->
+        forM_ (linesOf . delump $ b ^. _Just . to utf8) $ \line ->
             writeClient $ cmdPrivmsg (args ^. ix "from") channel line
     return True
 
@@ -271,7 +272,7 @@ res_recv_action Packet { pktParameter = p }
                        } sta = do
     channel <- toChannel $ $fromJst p
     unless (sta ^. username == args ^. ix "from") $
-        forM_ (linesOf . delump $ b ^. _Just) $ \line ->
+        forM_ (linesOf . delump $ b ^. _Just . to utf8) $ \line ->
             writeClient $ cmdPrivaction (args ^. ix "from") channel line
     return True
 
@@ -285,7 +286,7 @@ res_recv_join Packet { pktParameter = p }
     us <- getsState (\s -> s ^? users . ix room . ix (u ^. _Just))
     case us of
         Nothing -> do
-            user <- buildUser (u ^. _Just) (b ^. _Just) room
+            user <- buildUser (u ^. _Just) (b ^. _Just . to utf8) room
             modifyState (users . ix room %~ M.insert (u ^. _Just) user)
             writeClient $ cmdJoin (u ^. _Just) channel
             case asMode =<< view userPrivclass user of
@@ -381,7 +382,7 @@ res_kicked Packet { pktParameter = p
                   , pktBody = b
                   } sta = do
     channel <- toChannel $ p ^. _Just
-    writeClient $ cmdKick (args ^. ix "by") channel (sta ^. username) b
+    writeClient $ cmdKick (args ^. ix "by") channel (sta ^. username) (utf8 <$> b)
     return True
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}

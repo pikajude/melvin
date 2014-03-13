@@ -26,7 +26,6 @@ executable melvin
                     , bytestring
                     , containers
                     , cprng-aes
-                    , damnpacket >= 0.6
                     , data-default
                     , deepseq
                     , exceptions
@@ -58,7 +57,7 @@ executable melvin
   ghc-options:        -Wall
 
   If flag(error)
-    ghc-options:      -Werror
+    ghc-options:      -Werror -ddump-splices
 
 library
   exposed-modules:    Melvin.Damn.Tablumps

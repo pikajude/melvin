@@ -16,7 +16,7 @@ import Melvin.Client as Client
 import Melvin.Damn as Damn
 import Melvin.Client.Auth
 import Melvin.Exception
-import Melvin.Prelude hiding    (index, set)
+import Melvin.Prelude hiding    (index, set, utf8)
 import Melvin.Options
 import Melvin.Types
 import Network

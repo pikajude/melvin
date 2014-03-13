@@ -58,6 +58,7 @@ import           Control.Arrow
 import           Control.Concurrent
 import           Control.Concurrent.Async
 import qualified Control.Exception as E
+import qualified Data.ByteString as B
 import           Data.Map                 (Map)
 import           Data.Set
 import           Data.Text
@@ -154,9 +155,9 @@ writeClient text = do
     bracket_
         (liftIO $ takeMVar mv)
         (liftIO $ putMVar mv ())
-        ((liftIO (hPutStr h r) >> $logDebug r) `catch` fallback)
+        ((liftIO (hPutStr h r) >> $logDebug (utf8 r)) `catch` fallback)
     where fallback e = do
-            $logError $ "(write failed) " ++ r
+            $logError $ "(write failed) " ++ utf8 r
             E.throw $ ClientSocketErr e
           r = render text
 
@@ -167,7 +168,7 @@ writeServer text = do
         (liftIO $ takeMVar mv >> readMVar h)
         (\_ -> liftIO $ putMVar mv ())
         (\hndl -> (do
-            liftIO $ hPutStr hndl (D.render text ++ "\n\0")
+            liftIO $ B.hPutStr hndl (D.render text ++ "\n\0")
             $logDebug (show text)) `catch` fallback)
     where fallback e = do
             $logError $ "(write failed) " ++ show text

@@ -33,7 +33,7 @@ packetStream hndl = bracket
         isClosed <- liftIO $ hIsClosed h
         unless (isEOF || isClosed) $ do
             line <- liftIO $ hGetLine h
-            lift $ $logDebug line
+            lift $ $logDebug (utf8 line)
             yield $ parse line
             f)
 

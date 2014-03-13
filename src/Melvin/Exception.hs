@@ -7,6 +7,7 @@ module Melvin.Exception (
 ) where
 
 import Control.Exception
+import Data.ByteString      (ByteString)
 import Data.Monoid          ((<>))
 import Data.Text            (unpack, Text)
 import Data.Typeable
@@ -14,9 +15,9 @@ import Prelude hiding       ((++))
 
 data MelvinException =
         -- | Client sent something that doesn't parse.
-        ClientNoParse Text
+        ClientNoParse ByteString
         -- | Server sent something that doesn't parse.
-      | ServerNoParse String Text
+      | ServerNoParse String ByteString
         -- | Client disconnected unexpectedly.
       | ClientSocketErr IOException
         -- | Server disconnected unexpectedly.

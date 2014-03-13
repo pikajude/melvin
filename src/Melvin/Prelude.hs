@@ -12,6 +12,8 @@ module Melvin.Prelude (
   module X,
   st,
   stP,
+  sb,
+  sbP,
   LogIO,
   runStdoutLoggingT,
 
@@ -26,10 +28,13 @@ module Melvin.Prelude (
   IO.hGetLine,
   IO.putStrLn,
   IO.hPutStr,
+  IO.ByteString,
 
   -- Text
   Text,
-  pack
+  pack,
+  binary,
+  utf8
 ) where
 
 import           Control.Applicative
@@ -39,9 +44,10 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Logger as X hiding (runStdoutLoggingT)
 import           Control.Monad.State as X hiding (join)
 import qualified Data.ByteString.Char8 as S8
+import qualified Data.ByteString as IO
 import           Data.Monoid as X
 import           Data.Text                       (Text, pack)
-import qualified Data.Text.IO as IO
+import           Data.Text.Encoding              (decodeUtf8, encodeUtf8)
 import           FileLocation as X
 import           Melvin.Exception
 import           Melvin.Internal.Orphans as X    ()
@@ -56,6 +62,12 @@ import           System.Log.FastLogger           (fromLogStr)
 import           Text.Printf.TH
 
 type LogIO m = (MonadLogger m, MonadIO m)
+
+binary :: Text -> S8.ByteString
+binary = encodeUtf8
+
+utf8 :: S8.ByteString -> Text
+utf8 = decodeUtf8
 
 -- | Simple utility functions.
 show :: Show a => a -> Text
