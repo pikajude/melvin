@@ -67,9 +67,11 @@ library
   build-depends:      base
                     , async
                     , attoparsec
+                    , bytestring
                     , containers
                     , data-default
                     , deepseq
+                    , fast-logger
                     , file-location
                     , lens
                     , monad-logger
