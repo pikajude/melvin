@@ -1,11 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 704
-{-# LANGUAGE DoRec #-}
-#else
 {-# LANGUAGE RecursiveDo #-}
-#endif
 {-# LANGUAGE TemplateHaskell #-}
 
 module Melvin (
@@ -31,7 +27,7 @@ doAMelvin :: Mopts -> [String] -> IO ()
 doAMelvin Mopts { moptPort = p
                 , moptMaxClients = _
                 } _args = runStdoutLoggingT $ do
-    $logInfo $ "Listening on " ++ show p ++ "."
+    $logInfo $ [st|Listening on %?.|] p
     server <- liftIO $ listenOn p
     forM_ [1..] $ \i -> do
         triple <- liftIO $ accept server
@@ -41,12 +37,12 @@ doAMelvin Mopts { moptPort = p
 
 runClientPair :: Integer -> (Handle, String, t) -> LoggingT IO ()
 runClientPair index (h, host, _) = do
-    $logInfo $ "Client #" ++ show index ++ " has connected from " ++ pack host
+    $logInfo $ [st|Client #%? has connected from %s.|] index host
     liftIO $ hSetEncoding h utf8
     tokpair <- authenticate h
     case tokpair of
         Left e -> do
-            $logWarn $ "Client #" ++ show index ++ " couldn't authenticate: " ++ show e
+            $logWarn $ [st|Client #%? couldn't authenticate: %?.|] index e
             liftIO $ hClose h
         Right (uname, token_, rs) -> do
             set <- buildClientSettings index h uname token_ rs
