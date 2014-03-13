@@ -13,6 +13,7 @@ module Melvin.Prelude (
   st,
   stP,
   LogIO,
+  runStdoutLoggingT,
 
   -- retconned Prelude functions
   (++),
@@ -35,8 +36,9 @@ import           Control.Applicative
 import           Control.Exception               (IOException)
 import           Control.Lens as X hiding        (Level)
 import           Control.Monad.IO.Class
-import           Control.Monad.Logger as X
+import           Control.Monad.Logger as X hiding (runStdoutLoggingT)
 import           Control.Monad.State as X hiding (join)
+import qualified Data.ByteString.Char8 as S8
 import           Data.Monoid as X
 import           Data.Text                       (Text, pack)
 import qualified Data.Text.IO as IO
@@ -46,13 +48,11 @@ import           Melvin.Internal.Orphans as X    ()
 import           Melvin.Internal.MonadAsync as X
 import           Pipes as X hiding               (each, (<~))
 import           Pipes.Safe
-import           Prelude as X hiding             ((++), putStrLn, print, show, lines
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 704
-                                                 , catch
-#endif
-                                                 )
+import           Prelude as X hiding             ((++), putStrLn, print, show, lines)
 import qualified Prelude as P
 import           System.IO as X                  (Handle, hClose, hFlush, hIsClosed, hIsEOF)
+import           System.IO                       (stdout)
+import           System.Log.FastLogger           (fromLogStr)
 import           Text.Printf.TH
 
 type LogIO m = (MonadLogger m, MonadIO m)
@@ -63,6 +63,13 @@ show = pack . P.show
 
 (++) :: Monoid m => m -> m -> m
 (++) = (<>)
+
+-- redefined. monad-logger's function likes to output an extra newline.
+runStdoutLoggingT :: LoggingT m a -> m a
+runStdoutLoggingT = (`runLoggingT` defaultOutput stdout) where
+    defaultOutput h loc src level msg =
+        S8.hPutStr h ls where
+            ls = fromLogStr $ defaultLogStr loc src level msg
 
 -- | Dealing with the underlying Proxy monad upon which Melvin clients are
 -- based. Despite the type signature, this function only handles IO

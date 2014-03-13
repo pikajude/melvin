@@ -35,9 +35,7 @@ authenticate h = handleIOError (return . Left) $
     (`evalStateT` AuthClient Nothing Nothing Nothing mempty) . fix $ \f -> do
         ai <- getAuthInfo h
         case ai of
-            Nothing -> do
-                authFailure h
-                f
+            Nothing -> authFailure h >> f
             Just t -> do
                 authSuccess h
                 return $ Right t

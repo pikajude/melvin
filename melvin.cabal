@@ -30,6 +30,7 @@ executable melvin
                     , data-default
                     , deepseq
                     , exceptions
+                    , fast-logger
                     , file-location
                     , HTTP
                     , lens >= 3.9

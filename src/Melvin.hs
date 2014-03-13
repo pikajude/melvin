@@ -31,7 +31,7 @@ doAMelvin :: Mopts -> [String] -> IO ()
 doAMelvin Mopts { moptPort = p
                 , moptMaxClients = _
                 } _args = runStdoutLoggingT $ do
-    $logInfo $ "Listening on port " ++ show p ++ "."
+    $logInfo $ "Listening on " ++ show p ++ "."
     server <- liftIO $ listenOn p
     forM_ [1..] $ \i -> do
         triple <- liftIO $ accept server
