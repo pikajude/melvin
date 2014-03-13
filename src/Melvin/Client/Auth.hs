@@ -30,11 +30,8 @@ makeLenses ''AuthClient
 type Username = Text
 type AuthState m = StateT AuthClient m
 
-authHandler :: LogIO m => SomeException -> m (Either SomeException a)
-authHandler = return . Left
-
-authenticate :: (MonadCatch m, LogIO m) => Handle -> m (Either SomeException (Username, Text, S.Set Chatroom))
-authenticate h = handle authHandler $
+authenticate :: (MonadCatch m, LogIO m) => Handle -> m (Either IOError (Username, Text, S.Set Chatroom))
+authenticate h = handleIOError (return . Left) $
     (`evalStateT` AuthClient Nothing Nothing Nothing mempty) . fix $ \f -> do
         ai <- getAuthInfo h
         case ai of
