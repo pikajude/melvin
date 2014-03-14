@@ -34,12 +34,9 @@ executable melvin
                     , monad-logger
                     , mtl
                     , network
-                    , old-locale
                     , options >= 1.0
-                    , parsec
                     , text
                     , th-printf >= 0.2
-                    , thyme
                     , tls
                     , tls-extra
                     , transformers
