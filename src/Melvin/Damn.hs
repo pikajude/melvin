@@ -42,12 +42,11 @@ handler ex | Just (ClientSocketErr e) <- fromException ex = do
     $logWarn $ [st|Server thread hit an exception, but client disconnected (%?), so nothing to do.|] e
     throwM ex
 handler ex = do
-    uname <- use username
-    writeClient $ rplNotify uname $ [st|Error when communicating with dAmn: %?|] ex
+    writeClient . rplNotify $ [st|Error when communicating with dAmn: %?|] ex
     if isRetryable ex
-        then writeClient $ rplNotify uname "Trying to reconnect..."
+        then writeClient $ rplNotify "Trying to reconnect..."
         else do
-            writeClient $ rplNotify uname "Unrecoverable error. Disconnecting..."
+            writeClient $ rplNotify "Unrecoverable error. Disconnecting..."
             killClient
     throwM ex
 
@@ -123,17 +122,16 @@ res_ping :: Callback
 res_ping _ _ = writeServer Damn.pong >> return True
 
 res_login :: Callback
-res_login Packet { pktArgs = args } sta = do
-    let user = sta ^. username
+res_login Packet { pktArgs = args } _ = do
     case args ^. ix "e" of
         "ok" -> do
             modifyState (loggedIn .~ True)
-            writeClient $ rplNotify user "Authenticated successfully."
+            writeClient $ rplNotify "Authenticated successfully."
             joinlist <- getsState (view joinList)
             forM_ (S.elems joinlist) $ writeServer <=< Damn.join
             return True
         x -> do
-            writeClient $ rplNotify user "Authentication failed!"
+            writeClient $ rplNotify "Authentication failed!"
             throwM $ AuthenticationFailed x
 
 res_join :: Callback
@@ -234,12 +232,11 @@ res_send Packet { pktParameter = p
     return True
 
 res_disconnect :: Callback
-res_disconnect Packet { pktArgs = args } sta = do
-    let user = sta ^. username
+res_disconnect Packet { pktArgs = args } _ = do
     case args ^. ix "e" of
         "ok" -> return False
         n -> do
-            writeClient $ rplNotify user $ "Disconnected: " ++ n
+            writeClient . rplNotify $ "Disconnected: " ++ n
             throwM $ ServerDisconnect n
 
 res_recv :: Callback

@@ -70,6 +70,7 @@ library
                     , fast-logger
                     , file-location
                     , lens
+                    , machines
                     , monad-logger
                     , mtl
                     , text

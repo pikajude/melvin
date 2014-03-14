@@ -60,9 +60,7 @@ respond h text packet =
                           oldUser <- acUsername <<.= Just us
                           case oldUser of
                               Nothing -> greet h packet
-                              Just _ -> write h . render $ rplNotify us ([st|Your username is now %s.|] us)
-                          acUsername ?= us
-                          greet h packet
+                              Just _ -> write h . render $ rplNotify ([st|Your username is now %s.|] us)
         "PASS" -> case pktArguments packet of
                       [] -> do
                           n <- use $ acNick . _Just
@@ -88,7 +86,7 @@ getAuthInfo h = fix $ \f -> do
     case ac of
         AuthClient _ (Just u) (Just p) js -> do
             uname <- use $ acUsername . _Just
-            write h . render $ rplNotify uname "Fetching token..."
+            write h . render $ rplNotify "Fetching token..."
             liftIO $ fmap (fmap (uname, , js)) $ getToken u p
         _ -> f
 
@@ -99,9 +97,7 @@ authFailure h = do
     acPassword .= Nothing
 
 authSuccess :: LogIO m => Handle -> AuthState m ()
-authSuccess h = do
-    uname <- use $ acUsername . _Just
-    write h . render $ rplNotify uname "Got a token."
+authSuccess h = write h . render $ rplNotify "Got a token."
 
 write :: (MonadLogger m, MonadIO m) => Handle -> ByteString -> m ()
 write h s = do
