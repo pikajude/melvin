@@ -50,4 +50,4 @@ instance Show MelvinException where
 
 isRetryable :: SomeException -> Bool
 isRetryable e | Just (ServerDisconnect _) <- fromException e = True
-isRetryable e = maybe False (not . isDoesNotExistError) $ cast e
+isRetryable e = maybe False (not . isDoesNotExistError) $ fromException e

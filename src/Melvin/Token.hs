@@ -4,6 +4,7 @@ module Melvin.Token (
     getToken
 ) where
 
+import           Control.Applicative
 import           Control.Arrow
 import           Crypto.Random.AESCtr             (makeSystem)
 import qualified Data.ByteString.Char8 as B

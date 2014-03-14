@@ -24,7 +24,6 @@ import           Melvin.Prelude
 import           Melvin.Types
 import           Network
 import           System.IO hiding            (isEOF, print, putStrLn, utf8)
-import           System.IO.Error
 import           Text.Damn.Packet hiding     (render)
 
 handler :: SomeException -> ClientT ()
