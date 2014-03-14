@@ -23,7 +23,7 @@ recvUntil ctx str = do
     line <- recvData ctx
     if str `B.isInfixOf` line
         then return line
-        else fmap (line <>) $ recvUntil ctx str
+        else (line <>) <$> recvUntil ctx str
 
 concatHeaders :: [(String,String)] -> String
 concatHeaders = intercalate "\r\n" . map (\(x,y) -> x ++ ": " ++ y)

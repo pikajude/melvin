@@ -87,7 +87,7 @@ getAuthInfo h = fix $ \f -> do
         AuthClient _ (Just u) (Just p) js -> do
             uname <- use $ acUsername . _Just
             write h . render $ rplNotify uname "Fetching token..."
-            liftIO $ fmap (fmap (uname, , js)) $ getToken u p
+            liftIO $ fmap (uname, , js) <$> getToken u p
         _ -> f
 
 authFailure :: LogIO m => Handle -> AuthState m ()

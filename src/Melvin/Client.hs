@@ -32,12 +32,6 @@ loop hndl = bracket
             ~> auto parse
             ~> handleClient)
 
-lines :: LogIO m => Handle -> MachineT m k Packet
-lines h = repeatedly $ do
-    line <- liftIO $ hGetLine h
-    $logDebug (utf8 line)
-    yield (parse line)
-
 handleClient :: Category k => MachineT ClientT (k Packet) ()
 handleClient = construct $ fix $ \f -> do
     p <- await

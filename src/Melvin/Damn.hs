@@ -27,17 +27,6 @@ import           System.IO hiding            (isEOF, print, putStrLn, utf8)
 import           System.IO.Error
 import           Text.Damn.Packet hiding     (render)
 
-hGetTillNull :: Handle -> IO B.ByteString
-hGetTillNull h = do
-    ready <- hWaitForInput h 180000
-    if ready
-        then do
-            str <- B.hGet h 1
-            if str == "\0"
-                then return mempty
-                else fmap (str <>) $ hGetTillNull h
-        else $thrwIO $ mkIOError eofErrorType "read timeout" (Just h) . Just
-
 handler :: SomeException -> ClientT ()
 handler ex | Just (ClientSocketErr e) <- fromException ex = do
     $logWarn $ [st|Server thread hit an exception, but client disconnected (%?), so nothing to do.|] e
@@ -73,7 +62,7 @@ loop = do
                 ~> splittingBy "\0"
                 ~> auto (\x -> (x, parse $ cleanup x))
                 ~> handleServer)
-    where cleanup m = if B.isSuffixOf "\n" m
+    where cleanup m = if "\n" `B.isSuffixOf` m
                           then cleanup (B.init m)
                           else m
 
@@ -134,7 +123,7 @@ res_ping :: Callback
 res_ping _ _ = writeServer Damn.pong >> return True
 
 res_login :: Callback
-res_login Packet { pktArgs = args } sta = do
+res_login Packet { pktArgs = args } sta =
     case args ^. ix "e" of
         "ok" -> do
             modifyState (loggedIn .~ True)
@@ -244,7 +233,7 @@ res_send Packet { pktParameter = p
     return True
 
 res_disconnect :: Callback
-res_disconnect Packet { pktArgs = args } sta = do
+res_disconnect Packet { pktArgs = args } sta =
     case args ^. ix "e" of
         "ok" -> return False
         n -> do
