@@ -22,6 +22,7 @@ import           Melvin.Damn.Tablumps
 import           Melvin.Exception
 import           Melvin.Prelude
 import           Melvin.Types
+import           Network
 import           System.IO hiding            (isEOF, print, putStrLn, utf8)
 import           System.IO.Error
 import           Text.Damn.Packet hiding     (render)
@@ -42,25 +43,36 @@ handler ex | Just (ClientSocketErr e) <- fromException ex = do
     $logWarn $ [st|Server thread hit an exception, but client disconnected (%?), so nothing to do.|] e
     throwM ex
 handler ex = do
-    writeClient . rplNotify $ [st|Error when communicating with dAmn: %?|] ex
+    uname <- use username
+    writeClient . rplNotify uname $ [st|Error when communicating with dAmn: %?|] ex
     if isRetryable ex
-        then writeClient $ rplNotify "Trying to reconnect..."
+        then writeClient $ rplNotify uname "Trying to reconnect..."
         else do
-            writeClient $ rplNotify "Unrecoverable error. Disconnecting..."
+            writeClient $ rplNotify uname "Unrecoverable error. Disconnecting..."
             killClient
     throwM ex
 
-loop :: MVar Handle -> ClientT ()
-loop mv = bracket
-    (do hndl <- liftIO $ readMVar mv
-        liftIO $ auth hndl
-        return hndl)
-    (liftIO . hClose)
-    (\h -> handle handler $ runT_ $
-        reading h 8192
-            ~> splittingBy "\0"
-            ~> auto (\x -> (x, parse $ cleanup x))
-            ~> handleServer)
+establishConnection :: (Functor m, MonadIO m, MonadState ClientSettings m) => m ()
+establishConnection = do
+    smv <- use serverMVar
+    void $ liftIO $ tryTakeMVar smv
+    h <- liftIO $ connectTo "chat.deviantart.com" (PortNumber 3900)
+    liftIO $ putMVar smv h
+
+loop :: ClientT ()
+loop = do
+    handle handler establishConnection
+    mv <- use serverMVar
+    bracket
+        (do hndl <- liftIO $ readMVar mv
+            liftIO $ auth hndl
+            return hndl)
+        (liftIO . hClose)
+        (\h -> handle handler $ runT_ $
+            reading h 8192
+                ~> splittingBy "\0"
+                ~> auto (\x -> (x, parse $ cleanup x))
+                ~> handleServer)
     where cleanup m = if B.isSuffixOf "\n" m
                           then cleanup (B.init m)
                           else m
@@ -122,16 +134,16 @@ res_ping :: Callback
 res_ping _ _ = writeServer Damn.pong >> return True
 
 res_login :: Callback
-res_login Packet { pktArgs = args } _ = do
+res_login Packet { pktArgs = args } sta = do
     case args ^. ix "e" of
         "ok" -> do
             modifyState (loggedIn .~ True)
-            writeClient $ rplNotify "Authenticated successfully."
+            writeClient $ rplNotify (sta ^. username) "Authenticated successfully."
             joinlist <- getsState (view joinList)
             forM_ (S.elems joinlist) $ writeServer <=< Damn.join
             return True
         x -> do
-            writeClient $ rplNotify "Authentication failed!"
+            writeClient $ rplNotify (sta ^. username) "Authentication failed!"
             throwM $ AuthenticationFailed x
 
 res_join :: Callback
@@ -232,11 +244,11 @@ res_send Packet { pktParameter = p
     return True
 
 res_disconnect :: Callback
-res_disconnect Packet { pktArgs = args } _ = do
+res_disconnect Packet { pktArgs = args } sta = do
     case args ^. ix "e" of
         "ok" -> return False
         n -> do
-            writeClient . rplNotify $ "Disconnected: " ++ n
+            writeClient . rplNotify (sta ^. username) $ "Disconnected: " ++ n
             throwM $ ServerDisconnect n
 
 res_recv :: Callback

@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Melvin (
@@ -45,15 +46,6 @@ runClientPair index (h, host, _) = do
         Right (uname, token_, rs) -> do
             buildClientSettings index h uname token_ rs
 
-            -- | Run the client thread.
-            --
-            -- This isn't retried, unlike dAmn, because if the client exits
-            -- nobody really cares what happened on dAmn
-            rec client <- async $ do
-                 cti <- use clientThreadId
-                 liftIO $ putMVar cti client
-                 try (Client.loop h)
-
             -- | Run the server thread.
             --
             -- Uses Melvin.Exception's isRetryable to check whether errors
@@ -63,14 +55,21 @@ runClientPair index (h, host, _) = do
                  sti <- use serverThreadId
                  liftIO $ putMVar sti server
                  fix $ \f -> do
-                     insertDamn
-                     smv <- use serverMVar
-                     result <- try (Damn.loop smv)
+                     result <- try Damn.loop
                      case result of
                          r@Right{..} -> return r
                          Left e -> if isRetryable e
                              then retryWait += 5 >> f
                              else return $ Left e
+
+            -- | Run the client thread.
+            --
+            -- This isn't retried, unlike dAmn, because if the client exits
+            -- nobody really cares what happened on dAmn
+            rec client <- async $ do
+                 cti <- use clientThreadId
+                 liftIO $ putMVar cti client
+                 try $ Client.loop h
 
             result <- liftM2 (,) (wait client) (wait server)
             case result of
@@ -105,10 +104,3 @@ buildClientSettings i h u t j = do
         , _retryWait       = 5
         , _clientState     = csm
         }
-
-insertDamn :: (MonadState ClientSettings m, Functor m, MonadIO m) => m ()
-insertDamn = do
-    smv <- use serverMVar
-    void $ liftIO $ tryTakeMVar smv
-    h <- liftIO $ connectTo "chat.deviantart.com" (PortNumber 3900)
-    liftIO $ putMVar smv h

@@ -155,9 +155,9 @@ writeClient text = do
     bracket_
         (liftIO $ takeMVar mv)
         (liftIO $ putMVar mv ())
-        ((liftIO (hPutStr h r) >> $logDebug (utf8 r)) `catch` fallback)
+        ((liftIO (hPutStr h r) >> $logDebug (show r)) `catch` fallback)
     where fallback e = do
-            $logError $ "(write failed) " ++ utf8 r
+            $logError $ "(write failed) " ++ show r
             E.throw $ ClientSocketErr e
           r = render text
 
@@ -165,11 +165,14 @@ writeServer :: D.Packet -> ClientT ()
 writeServer text = do
     (mv, h) <- gets (view serverWriteLock &&& view serverMVar)
     bracket
-        (liftIO $ takeMVar mv >> readMVar h)
+        (liftIO $ takeMVar mv >> tryTakeMVar h)
         (\_ -> liftIO $ putMVar mv ())
-        (\hndl -> (do
-            liftIO $ B.hPutStr hndl (D.render text ++ "\n\0")
-            $logDebug (show text)) `catch` fallback)
+        (\mHndl -> case mHndl of
+            Nothing -> E.throw ServerNotConnected
+            Just hndl -> (do
+                liftIO $ putMVar h hndl
+                liftIO $ B.hPutStr hndl (D.render text ++ "\n\0")
+                $logDebug (show text)) `catch` fallback)
     where fallback e = do
             $logError $ "(write failed) " ++ show text
             E.throw $ ServerSocketErr e

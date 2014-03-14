@@ -12,6 +12,7 @@ import Data.Monoid          ((<>))
 import Data.Text            (unpack, Text)
 import Data.Typeable
 import Prelude hiding       ((++))
+import System.IO.Error
 
 data MelvinException =
         -- | Client sent something that doesn't parse.
@@ -22,6 +23,9 @@ data MelvinException =
       | ClientSocketErr IOException
         -- | Server disconnected unexpectedly.
       | ServerSocketErr IOException
+        -- | Server never actually got connected, but someone is trying to
+        -- write to it.
+      | ServerNotConnected
         -- | Server sent an unexpected "disconnect" packet.
       | ServerDisconnect Text
         -- | Authentication with dAmn failed, despite the fact that dAmn
@@ -38,6 +42,7 @@ instance Show MelvinException where
     show (AuthenticationFailed e) = "couldn't login: " <> unpack e
     show (ClientSocketErr e) = "lost connection to client: " <> Prelude.show e
     show (ServerSocketErr e) = "lost connection to server: " <> Prelude.show e
+    show ServerNotConnected = "tried to write to server, but handle not connected"
     show (ServerDisconnect e) = "lost connection to server: " <> unpack e
     show ServerNoParse{..} = "received a bad packet from the server"
     show ClientNoParse{..} = "received a bad packet from the client"
@@ -45,4 +50,4 @@ instance Show MelvinException where
 
 isRetryable :: SomeException -> Bool
 isRetryable e | Just (ServerDisconnect _) <- fromException e = True
-isRetryable _ = False
+isRetryable e = maybe False (not . isDoesNotExistError) $ cast e

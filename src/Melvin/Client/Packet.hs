@@ -155,8 +155,8 @@ readable m = show m ++ " times"
 rplMyInfo :: Text -> Packet
 rplMyInfo n = Packet hostname "004" [n, "chat.deviantart.com", "dAmnServer0.3", "qov", "i"]
 
-rplNotify :: Text -> Packet
-rplNotify msg = Packet hostname "273" [msg]
+rplNotify :: Text -> Text -> Packet
+rplNotify u msg = Packet hostname "273" [u, msg]
 
 rplNoTopic, rplTopic :: Text -> Text -> Text -> Packet
 rplNoTopic user channel reason = Packet hostname "331" [user, channel, reason]
