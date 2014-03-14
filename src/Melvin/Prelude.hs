@@ -21,9 +21,12 @@ module Melvin.Prelude (
   (++),
   show,
   (<$>),
+  Category,
 
   -- IO
   runMelvin,
+  reading,
+  splittingBy,
 
   IO.hGetLine,
   IO.putStrLn,
@@ -38,6 +41,7 @@ module Melvin.Prelude (
 ) where
 
 import           Control.Applicative
+import           Control.Category                (Category)
 import           Control.Exception               (IOException)
 import           Control.Lens as X hiding        (Level)
 import           Control.Monad.Catch as X hiding (bracket, bracket_)
@@ -46,6 +50,7 @@ import           Control.Monad.Logger as X hiding (runStdoutLoggingT)
 import           Control.Monad.State as X hiding (join)
 import qualified Data.ByteString.Char8 as S8
 import qualified Data.ByteString as IO
+import           Data.Machine as X               (MachineT, PlanT, await, repeatedly, runT_, auto, construct, stop, yield, (~>))
 import           Data.Monoid as X
 import           Data.Text                       (Text, pack)
 import           Data.Text.Encoding              (decodeUtf8, encodeUtf8)
@@ -74,6 +79,22 @@ show = pack . P.show
 
 (++) :: Monoid m => m -> m -> m
 (++) = (<>)
+
+reading :: MonadIO m => Handle -> Int -> MachineT m k IO.ByteString
+reading h n = repeatedly $ yield =<< liftIO (IO.hGetSome h n)
+
+splittingBy :: (Monad m, Category k) => IO.ByteString -> MachineT m (k IO.ByteString) IO.ByteString
+splittingBy sep = repeatedly $ go "" where
+    waitNext str =
+        case IO.breakSubstring sep str of
+            (a, b) | IO.null a && IO.null b -> stop
+                   | IO.null b || b == sep -> yield a
+                   | otherwise -> yield a >> go (IO.tail b)
+    go buffer = if sep `IO.isInfixOf` buffer
+                    then waitNext buffer
+                    else do
+                        str <- await <|> (unless (IO.null buffer) (yield buffer) *> stop)
+                        waitNext (buffer <> str)
 
 -- redefined. monad-logger's function likes to output an extra newline.
 runStdoutLoggingT :: LoggingT m a -> m a

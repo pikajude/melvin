@@ -5,6 +5,7 @@ module Melvin.Damn (loop) where
 import           Control.Applicative
 import           Control.Arrow hiding        (loop)
 import           Control.Concurrent hiding   (yield)
+import           Control.Exception           (throw)
 import           Control.Monad
 import           Control.Monad.Catch
 import           Control.Monad.Fix
@@ -56,26 +57,29 @@ loop mv = bracket
         liftIO $ auth hndl
         return hndl)
     (liftIO . hClose)
-    (\h -> handle handler $ fix $ \f -> do
-        isEOF <- liftIO $ hIsEOF h
-        isClosed <- liftIO $ hIsClosed h
-        when (isEOF || isClosed) $ throwM (ServerDisconnect "socket closed")
-        line <- liftIO $ hGetTillNull h
-        $logDebug $ show $ cleanup line
-        case parse $ cleanup line of
-            Left e -> throwM $ ServerNoParse e line
-            Right p -> do
-                continue <- case M.lookup (pktCommand p) responses of
-                    Nothing -> do
-                        $logInfo $ [st|Unhandled packet from damn: %?|] p
-                        return False
-                    Just callback -> do
-                        sta <- get
-                        callback p sta
-                when continue f)
+    (\h -> handle handler $ runT_ $
+        reading h 8192
+            ~> splittingBy "\0"
+            ~> auto (\x -> (x, parse $ cleanup x))
+            ~> handleServer)
     where cleanup m = if B.isSuffixOf "\n" m
                           then cleanup (B.init m)
                           else m
+
+handleServer :: Category k => MachineT ClientT (k (ByteString, Either String Packet)) ()
+handleServer = construct $ fix $ \f -> do
+    res <- await
+    case res of
+        (str, Left e) -> throw $ ServerNoParse e str
+        (_, Right p) -> do
+            continue <- case M.lookup (pktCommand p) responses of
+                Nothing -> do
+                    $logInfo $ [st|Unhandled packet from damn: %?|] p
+                    return False
+                Just callback -> do
+                    sta <- get
+                    lift $ callback p sta
+            when continue f
 
 auth :: Handle -> IO ()
 auth h = System.IO.hPutStr h "dAmnClient 0.3\nagent=melvin 0.1\n\0"

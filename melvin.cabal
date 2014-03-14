@@ -29,7 +29,8 @@ executable melvin
                     , fast-logger
                     , file-location
                     , HTTP
-                    , lens >= 3.9
+                    , lens >= 4.0
+                    , machines
                     , monad-logger
                     , mtl
                     , network

@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Melvin.Client (loop) where
@@ -25,21 +26,29 @@ loop :: Handle -> ClientT ()
 loop hndl = bracket
     (return hndl)
     (liftIO . hClose)
-    (\h -> handle handler $ fix $ \f -> do
-        isEOF <- liftIO $ hIsEOF h
-        isClosed <- liftIO $ hIsClosed h
-        unless (isEOF || isClosed) $ do
-            line <- liftIO $ hGetLine h
-            lift $ $logDebug (utf8 line)
-            let p = parse line
-            continue <- case M.lookup (pktCommand p) responses of
-                Nothing -> do
-                    $logInfo $ [st|Unhandled packet from client: %?|] p
-                    return False
-                Just callback -> do
-                    sta <- get
-                    callback p sta
-            when continue f)
+    (\h -> handle handler $ runT_ $
+        reading h 512
+            ~> splittingBy "\r\n"
+            ~> auto parse
+            ~> handleClient)
+
+lines :: LogIO m => Handle -> MachineT m k Packet
+lines h = repeatedly $ do
+    line <- liftIO $ hGetLine h
+    $logDebug (utf8 line)
+    yield (parse line)
+
+handleClient :: Category k => MachineT ClientT (k Packet) ()
+handleClient = construct $ fix $ \f -> do
+    p <- await
+    continue <- case M.lookup (pktCommand p) responses of
+        Nothing -> do
+            $logInfo $ [st|Unhandled packet from client: %?|] p
+            return False
+        Just callback -> do
+            sta <- get
+            lift $ callback p sta
+    when continue f
 
 -- | Big ol' list of callbacks!
 type Callback = Packet -> ClientSettings -> ClientT Bool
