@@ -5,17 +5,10 @@
 
 module Melvin.Internal.Orphans where
 
+import Control.Monad.Catch
 import Control.Monad.Logger
 import Control.Monad.State
-import Pipes.Safe
 import Prelude
-
-instance MonadLogger m => MonadLogger (SafeT m) where
-    monadLoggerLog a b c d = lift (monadLoggerLog a b c d)
-
-instance MonadState s m => MonadState s (SafeT m) where
-    get = lift get
-    put = lift . put
 
 instance MonadCatch m => MonadCatch (LoggingT m) where
     throwM = lift . throwM

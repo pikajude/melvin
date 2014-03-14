@@ -36,8 +36,6 @@ executable melvin
                     , old-locale
                     , options >= 1.0
                     , parsec
-                    , pipes >= 4.0
-                    , pipes-safe >= 2.0
                     , text
                     , th-printf >= 0.2
                     , thyme
@@ -67,6 +65,7 @@ library
                     , containers
                     , data-default
                     , deepseq
+                    , exceptions
                     , fast-logger
                     , file-location
                     , lens
