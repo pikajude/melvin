@@ -6,7 +6,7 @@ module Melvin.Internal.MonadAsync (async, wait) where
 import qualified Control.Concurrent.Async as A
 import Control.Monad.Fix
 import Control.Monad.Logger
-import Control.Monad.Trans
+import Control.Monad.State
 import Prelude
 
 class Monad m => MonadAsync m where
@@ -19,6 +19,10 @@ instance MonadAsync IO where
 
 instance MonadAsync m => MonadAsync (LoggingT m) where
     async f = LoggingT $ \i -> async (runLoggingT f i)
+    wait = lift . wait
+
+instance MonadAsync m => MonadAsync (StateT s m) where
+    async m = StateT $ \s -> liftM (flip (,) s) $ async (evalStateT m s)
     wait = lift . wait
 
 instance MonadFix (LoggingT IO) where

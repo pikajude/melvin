@@ -58,6 +58,7 @@ import           Control.Arrow
 import           Control.Concurrent
 import           Control.Concurrent.Async
 import qualified Control.Exception as E
+import           Control.Monad.Catch
 import qualified Data.ByteString as B
 import           Data.Map                 (Map)
 import           Data.Set
@@ -65,7 +66,6 @@ import           Data.Text
 import           Melvin.Client.Packet
 import           Melvin.Exception
 import           Melvin.Prelude hiding    (cons)
-import           Pipes.Safe
 import qualified Text.Damn.Packet as D
 
 data Chatroom =
@@ -147,11 +147,11 @@ data ClientSettings = ClientSettings
 
 makeLenses ''ClientSettings
 
-type ClientT = SafeT (StateT ClientSettings (LoggingT IO))
+type ClientT = StateT ClientSettings (LoggingT IO)
 
 writeClient :: Packet -> ClientT ()
 writeClient text = do
-    (mv, h) <- lift $ gets (view clientWriteLock &&& view clientHandle)
+    (mv, h) <- gets (view clientWriteLock &&& view clientHandle)
     bracket_
         (liftIO $ takeMVar mv)
         (liftIO $ putMVar mv ())
@@ -163,7 +163,7 @@ writeClient text = do
 
 writeServer :: D.Packet -> ClientT ()
 writeServer text = do
-    (mv, h) <- lift $ gets (view serverWriteLock &&& view serverMVar)
+    (mv, h) <- gets (view serverWriteLock &&& view serverMVar)
     bracket
         (liftIO $ takeMVar mv >> readMVar h)
         (\_ -> liftIO $ putMVar mv ())
@@ -176,7 +176,7 @@ writeServer text = do
 
 killClient :: ClientT ()
 killClient = do
-    ct <- lift $ use clientThreadId
+    ct <- use clientThreadId
     tid <- liftIO $ tryTakeMVar ct
     case tid of
         Nothing -> $logWarn "Client thread is already dead."
@@ -184,7 +184,7 @@ killClient = do
 
 killServer :: ClientT ()
 killServer = do
-    ct <- lift $ use serverThreadId
+    ct <- use serverThreadId
     tid <- liftIO $ tryTakeMVar ct
     case tid of
         Nothing -> $logWarn "Server thread is already dead."
@@ -192,22 +192,22 @@ killServer = do
 
 modifyState :: (ClientState -> ClientState) -> ClientT ()
 modifyState f = do
-    cs <- lift $ use clientState
+    cs <- use clientState
     liftIO $ modifyMVar_ cs (return . f)
 
 getState :: ClientT ClientState
 getState = do
-    cs <- lift $ use clientState
+    cs <- use clientState
     liftIO $ readMVar cs
 
 getsState :: (ClientState -> a) -> ClientT a
 getsState f = do
-    cs <- lift $ use clientState
+    cs <- use clientState
     sta <- liftIO $ readMVar cs
     return $ f sta
 
 putState :: ClientState -> ClientT ()
 putState v = do
-    cs <- lift $ use clientState
+    cs <- use clientState
     _ <- liftIO $ tryTakeMVar cs
     liftIO $ putMVar cs v

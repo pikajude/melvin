@@ -1,14 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Melvin.Damn (
-  packetStream,
-  responder
-) where
+module Melvin.Damn (loop) where
 
 import           Control.Applicative
-import           Control.Arrow
+import           Control.Arrow hiding        (loop)
 import           Control.Concurrent hiding   (yield)
 import           Control.Monad
+import           Control.Monad.Catch
 import           Control.Monad.Fix
 import qualified Data.ByteString as B
 import qualified Data.Map as M
@@ -23,7 +21,6 @@ import           Melvin.Damn.Tablumps
 import           Melvin.Exception
 import           Melvin.Prelude
 import           Melvin.Types
-import           Pipes.Safe
 import           System.IO hiding            (isEOF, print, putStrLn, utf8)
 import           System.IO.Error
 import           Text.Damn.Packet hiding     (render)
@@ -44,7 +41,7 @@ handler ex | Just (ClientSocketErr e) <- fromException ex = do
     $logWarn $ [st|Server thread hit an exception, but client disconnected (%?), so nothing to do.|] e
     throwM ex
 handler ex = do
-    uname <- lift $ use username
+    uname <- use username
     writeClient $ rplNotify uname $ [st|Error when communicating with dAmn: %?|] ex
     if isRetryable ex
         then writeClient $ rplNotify uname "Trying to reconnect..."
@@ -53,38 +50,32 @@ handler ex = do
             killClient
     throwM ex
 
-packetStream :: MVar Handle -> Producer Packet ClientT ()
-packetStream mv = bracket
+loop :: MVar Handle -> ClientT ()
+loop mv = bracket
     (do hndl <- liftIO $ readMVar mv
         liftIO $ auth hndl
         return hndl)
     (liftIO . hClose)
-    (\h -> handle (lift . handler) $ fix $ \f -> do
+    (\h -> handle handler $ fix $ \f -> do
         isEOF <- liftIO $ hIsEOF h
         isClosed <- liftIO $ hIsClosed h
         when (isEOF || isClosed) $ throwM (ServerDisconnect "socket closed")
         line <- liftIO $ hGetTillNull h
-        lift . $logDebug $ show $ cleanup line
+        $logDebug $ show $ cleanup line
         case parse $ cleanup line of
             Left e -> throwM $ ServerNoParse e line
-            Right pk -> do
-                yield pk
-                f)
+            Right p -> do
+                continue <- case M.lookup (pktCommand p) responses of
+                    Nothing -> do
+                        $logInfo $ [st|Unhandled packet from damn: %?|] p
+                        return False
+                    Just callback -> do
+                        sta <- get
+                        callback p sta
+                when continue f)
     where cleanup m = if B.isSuffixOf "\n" m
                           then cleanup (B.init m)
                           else m
-
-responder :: Consumer Packet ClientT ()
-responder = handle (lift . handler) $ fix $ \f -> do
-    p <- await
-    continue <- case M.lookup (pktCommand p) responses of
-        Nothing -> do
-            lift . $logInfo $ [st|Unhandled packet from damn: %?|] p
-            return False
-        Just callback -> do
-            sta <- lift $ lift get
-            lift $ callback p sta
-    when continue f
 
 auth :: Handle -> IO ()
 auth h = System.IO.hPutStr h "dAmnClient 0.3\nagent=melvin 0.1\n\0"

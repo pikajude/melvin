@@ -40,6 +40,7 @@ module Melvin.Prelude (
 import           Control.Applicative
 import           Control.Exception               (IOException)
 import           Control.Lens as X hiding        (Level)
+import           Control.Monad.Catch as X hiding (bracket, bracket_)
 import           Control.Monad.IO.Class
 import           Control.Monad.Logger as X hiding (runStdoutLoggingT)
 import           Control.Monad.State as X hiding (join)
@@ -53,7 +54,6 @@ import           Melvin.Exception
 import           Melvin.Internal.Orphans as X    ()
 import           Melvin.Internal.MonadAsync as X
 import           Pipes as X hiding               (each, (<~))
-import           Pipes.Safe
 import           Prelude as X hiding             ((++), putStrLn, print, show, lines)
 import qualified Prelude as P
 import           System.IO as X                  (Handle, hClose, hFlush, hIsClosed, hIsEOF)
@@ -86,9 +86,9 @@ runStdoutLoggingT = (`runLoggingT` defaultOutput stdout) where
 -- | Dealing with the underlying Proxy monad upon which Melvin clients are
 -- based. Despite the type signature, this function only handles IO
 -- exceptions and Melvin-internal exceptions.
-runMelvin :: (MonadIO m, MonadCatch m) => s -> Effect (SafeT (StateT s m)) r -> m (Either SomeException r)
+runMelvin :: (MonadIO m, MonadCatch m) => s -> StateT s m r -> m (Either SomeException r)
 runMelvin st_ m = catches
-    (liftM Right $ evalStateT (runSafeT $ runEffect m) st_)
+    (liftM Right $ evalStateT m st_)
     [ Handler $ \(e :: IOException) -> return (Left $ toException e)
     , Handler $ \(e :: MelvinException) -> return (Left $ toException e)
     ]

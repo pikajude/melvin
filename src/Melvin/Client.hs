@@ -1,11 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Melvin.Client (
-  packetStream,
-  responder
-) where
+module Melvin.Client (loop) where
 
 import           Control.Monad
+import           Control.Monad.Catch
 import           Control.Monad.Fix
 import qualified Data.Map as M
 import           Data.Maybe
@@ -16,39 +14,32 @@ import           Melvin.Client.Packet hiding (render)
 import qualified Melvin.Damn.Actions as Damn
 import           Melvin.Prelude
 import           Melvin.Types
-import           Pipes.Safe
 
 handler :: SomeException -> ClientT ()
 handler ex = do
-    $logError $ show ex
+    $logError $ show (ex :: SomeException)
     killServer
     throwM ex
 
-packetStream :: Handle -> Producer Packet ClientT ()
-packetStream hndl = bracket
+loop :: Handle -> ClientT ()
+loop hndl = bracket
     (return hndl)
     (liftIO . hClose)
-    (\h -> handle (lift . handler) $ fix $ \f -> do
+    (\h -> handle handler $ fix $ \f -> do
         isEOF <- liftIO $ hIsEOF h
         isClosed <- liftIO $ hIsClosed h
         unless (isEOF || isClosed) $ do
             line <- liftIO $ hGetLine h
             lift $ $logDebug (utf8 line)
-            yield $ parse line
-            f)
-
-responder :: Consumer Packet ClientT ()
-responder = handle (lift . handler) $ fix $ \f -> do
-    p <- await
-    continue <- case M.lookup (pktCommand p) responses of
-        Nothing -> do
-            lift . $logInfo $ [st|Unhandled packet from client: %?|] p
-            return False
-        Just callback -> do
-            sta <- lift $ lift get
-            lift $ callback p sta
-    when continue f
-
+            let p = parse line
+            continue <- case M.lookup (pktCommand p) responses of
+                Nothing -> do
+                    $logInfo $ [st|Unhandled packet from client: %?|] p
+                    return False
+                Just callback -> do
+                    sta <- get
+                    callback p sta
+            when continue f)
 
 -- | Big ol' list of callbacks!
 type Callback = Packet -> ClientSettings -> ClientT Bool
