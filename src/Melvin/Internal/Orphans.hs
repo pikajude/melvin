@@ -5,7 +5,6 @@
 
 module Melvin.Internal.Orphans where
 
-import Control.Category (Category)
 import Control.Monad.Catch
 import Control.Monad.Logger
 import Control.Monad.State

@@ -57,6 +57,10 @@ respond h text packet =
         "NICK" -> case pktArguments packet of
                       [] -> write h . render $ errNoNicknameGiven "stupid"
                       (us:_) -> do
+                          oldUser <- acUsername <<.= Just us
+                          case oldUser of
+                              Nothing -> greet h packet
+                              Just _ -> write h . render $ rplNotify us ([st|Your username is now %s.|] us)
                           acUsername ?= us
                           greet h packet
         "PASS" -> case pktArguments packet of
