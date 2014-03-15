@@ -26,7 +26,7 @@ module Melvin.Prelude (
   -- IO
   runMelvin,
   reading,
-  splittingBy,
+  endingBy,
   pass,
 
   IO.hGetLine,
@@ -91,8 +91,8 @@ pass f = repeatedly $ do
 reading :: MonadIO m => Handle -> Int -> MachineT m k IO.ByteString
 reading h n = repeatedly $ yield =<< liftIO (IO.hGetSome h n)
 
-splittingBy :: (Monad m, Category k) => IO.ByteString -> MachineT m (k IO.ByteString) IO.ByteString
-splittingBy sep = repeatedly $ go "" where
+endingBy :: (Monad m, Category k) => IO.ByteString -> MachineT m (k IO.ByteString) IO.ByteString
+endingBy sep = repeatedly $ go "" where
     waitNext str = if IO.null b
                        then go a
                        else yield a >> go (IO.drop (IO.length sep) b)

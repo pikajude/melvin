@@ -59,9 +59,9 @@ loop = do
         (liftIO . hClose)
         (\h -> handle handler $ runT_ $
             reading h 8192
-                ~> splittingBy "\0"
+                ~> endingBy "\0"
                 ~> pass ($logDebug . show)
-                ~> auto (\x -> (x, parse $ cleanup x))
+                ~> auto (liftM2 (,) id (parse . cleanup))
                 ~> handleServer)
     where cleanup m = if "\n" `B.isSuffixOf` m
                           then cleanup (B.init m)

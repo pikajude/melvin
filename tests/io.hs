@@ -11,7 +11,7 @@ import Test.QuickCheck.Instances ()
 qc :: String -> IO ()
 qc delim = do
     r <- quickCheckResult
-            (\y -> run (source y ~> splittingBy (B.pack delim))
+            (\y -> run (source y ~> endingBy (B.pack delim))
                 == map B.pack (endBy delim (B.unpack $ B.concat y)))
     case r of
         Success{} -> return ()

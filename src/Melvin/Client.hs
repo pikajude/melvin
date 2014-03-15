@@ -28,7 +28,7 @@ loop hndl = bracket
     (liftIO . hClose)
     (\h -> handle handler $ runT_ $
         reading h 512
-            ~> splittingBy "\r\n"
+            ~> endingBy "\r\n"
             ~> pass ($logDebug . show)
             ~> auto parse
             ~> handleClient)
