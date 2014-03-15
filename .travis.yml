@@ -11,4 +11,4 @@ script:
   - cabal test --show-details=always
 
 env:
-  - mode="--enable-tests -ferror"
+  - mode="--enable-tests"
