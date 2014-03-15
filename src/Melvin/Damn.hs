@@ -31,13 +31,13 @@ handler :: ClientT m => SomeException -> m ()
 handler ex | Just (ClientSocketErr e) <- fromException ex = do
     $logWarn $ [st|Server thread hit an exception, but client disconnected (%?), so nothing to do.|] e
     throwM ex
+handler ex | Just ThreadKilled <- fromException ex = return ()
 handler ex = do
-    uname <- use username
-    writeClient . rplNotify uname $ [st|Error when communicating with dAmn: %?|] ex
+    writeClient . rplNotify $ [st|Error when communicating with dAmn: %?|] ex
     if isRetryable ex
-        then writeClient $ rplNotify uname "Trying to reconnect..."
+        then writeClient $ rplNotify "Trying to reconnect..."
         else do
-            writeClient $ rplNotify uname "Unrecoverable error. Disconnecting..."
+            writeClient $ rplNotify "Unrecoverable error. Disconnecting..."
             killClient
     throwM ex
 
@@ -75,7 +75,7 @@ handleServer = construct $ fix $ \f -> do
         (_, Right p) -> do
             continue <- case M.lookup (pktCommand p) responses of
                 Nothing -> do
-                    $logInfo $ [st|Unhandled packet from damn: %?|] p
+                    $logWarn $ [st|Unhandled packet from damn: %?|] p
                     return False
                 Just callback -> do
                     sta <- get
@@ -116,7 +116,7 @@ recv_responses = M.fromList [ ("msg", res_recv_msg)
 res_dAmnServer :: ClientT m => Callback m
 res_dAmnServer _ sta = do
     let (num, (user, tok)) = (clientNumber &&& view username &&& view token) sta
-    $logInfo $ [st|Client #%d handshook successfully.|] num
+    $logDebug $ [st|Client #%d handshook successfully.|] num
     writeServer $ Damn.login user tok
     return True
 
@@ -124,16 +124,16 @@ res_ping :: ClientT m => Callback m
 res_ping _ _ = writeServer Damn.pong >> return True
 
 res_login :: ClientT m => Callback m
-res_login Packet { pktArgs = args } sta =
+res_login Packet { pktArgs = args } _ =
     case args ^. ix "e" of
         "ok" -> do
             modifyState (loggedIn .~ True)
-            writeClient $ rplNotify (sta ^. username) "Authenticated successfully."
+            writeClient $ rplNotify "Authenticated successfully."
             joinlist <- getsState (view joinList)
             forM_ (S.elems joinlist) $ writeServer <=< Damn.join
             return True
         x -> do
-            writeClient $ rplNotify (sta ^. username) "Authentication failed!"
+            writeClient $ rplNotify "Authentication failed!"
             throwM $ AuthenticationFailed x
 
 res_join :: ClientT m => Callback m
@@ -172,10 +172,10 @@ res_property Packet { pktParameter = p
                 writeClient $ rplTopic user channel (T.cons ':' . T.intercalate " | " . linesOf $ delump $ utf8 b)
                 writeClient $ rplTopicWhoTime user channel (args ^. ix "by") (args ^. ix "ts")
 
-        "title" -> $logInfo $ [st|Received title for %s: %s|] channel (body ^. _Just)
+        "title" -> $logDebug $ [st|Received title for %s: %s|] channel (body ^. _Just)
 
         "privclasses" -> do
-            $logInfo $ [st|Received privclasses for %s|] channel
+            $logDebug $ [st|Received privclasses for %s|] channel
             joining' <- getsState (view joining)
             unless (channel `S.member` joining') $ do
                 $logDebug $ [st|Got privclasses, but finished joining!|]
@@ -234,11 +234,11 @@ res_send Packet { pktParameter = p
     return True
 
 res_disconnect :: ClientT m => Callback m
-res_disconnect Packet { pktArgs = args } sta =
+res_disconnect Packet { pktArgs = args } _ =
     case args ^. ix "e" of
         "ok" -> return False
         n -> do
-            writeClient . rplNotify (sta ^. username) $ "Disconnected: " ++ n
+            writeClient . rplNotify $ "Disconnected: " ++ n
             throwM $ ServerDisconnect n
 
 res_recv :: ClientT m => Callback m

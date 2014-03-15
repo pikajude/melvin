@@ -60,8 +60,8 @@ responses = M.fromList [ ("QUIT", res_quit)
 
 res_quit :: ClientT m => Callback m
 res_quit _ sta = do
-    $logInfo $ [st|Client #%d quit cleanly.|] (clientNumber sta)
-    writeServer Damn.disconnect
+    $logDebug $ [st|Client #%d quit|] (clientNumber sta)
+    killServer
     return False
 
 res_ping :: ClientT m => Callback m

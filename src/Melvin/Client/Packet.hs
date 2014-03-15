@@ -99,7 +99,7 @@ cmdPong :: [Text] -> Packet
 cmdPong = Packet Nothing "PONG"
 
 cmdJoin, cmdSendError :: Text -> Text -> Packet
-cmdJoin n channel = Packet (hostOf n) "JOIN" [channel]
+cmdJoin n channel = Packet (hostOf n) "JOIN" [":" <> channel]
 cmdSendError channel e = Packet (Just "dAmn") "NOTICE"
     [channel, [st|Send error: %s|] e]
 
@@ -155,8 +155,8 @@ readable m = show m ++ " times"
 rplMyInfo :: Text -> Packet
 rplMyInfo n = Packet hostname "004" [n, "chat.deviantart.com", "dAmnServer0.3", "qov", "i"]
 
-rplNotify :: Text -> Text -> Packet
-rplNotify u msg = Packet hostname "273" [u, msg]
+rplNotify :: Text -> Packet
+rplNotify msg = Packet Nothing "NOTICE" ["AUTH", msg]
 
 rplNoTopic, rplTopic :: Text -> Text -> Text -> Packet
 rplNoTopic user channel reason = Packet hostname "331" [user, channel, reason]

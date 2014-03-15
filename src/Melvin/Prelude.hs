@@ -43,6 +43,7 @@ module Melvin.Prelude (
 import           Control.Applicative
 import           Control.Category                (Category)
 import           Control.Exception               (IOException)
+import           Control.Exception as X          (AsyncException(..))
 import           Control.Lens as X hiding        (Level)
 import           Control.Monad.Catch as X hiding (bracket, bracket_)
 import           Control.Monad.IO.Class
