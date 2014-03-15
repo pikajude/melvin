@@ -8,17 +8,14 @@ import System.Exit
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
 
-qc f = do
-    r <- quickCheckResult f
+qc :: String -> IO ()
+qc delim = do
+    r <- quickCheckResult
+            (\y -> run (source y ~> splittingBy (B.pack delim))
+                == map B.pack (endBy delim (B.unpack $ B.concat y)))
     case r of
         Success{} -> return ()
         _ -> exitFailure
 
 main :: IO ()
-main = do
-    qc (\y -> run (source y ~> splittingBy "\0")
-        == map B.pack (endBy "\0" (B.unpack $ B.concat y)))
-    qc (\y -> run (source y ~> splittingBy "\0\1")
-        == map B.pack (endBy "\0\1" (B.unpack $ B.concat y)))
-    qc (\y -> run (source y ~> splittingBy "\1\0")
-        == map B.pack (endBy "\1\0" (B.unpack $ B.concat y)))
+main = mapM_ qc ["\0", "\0\1", "\1\1"]

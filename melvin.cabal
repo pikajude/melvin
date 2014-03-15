@@ -83,8 +83,9 @@ benchmark parser
   default-language:   Haskell2010
 
 test-suite io-machines
-  type: exitcode-stdio-1.0
-  main-is: io.hs
-  hs-source-dirs: tests
-  build-depends: base, bytestring, machines, melvin, QuickCheck, quickcheck-instances, split
+  type:               exitcode-stdio-1.0
+  main-is:            io.hs
+  hs-source-dirs:     tests
+  build-depends:      base, bytestring, machines, melvin, QuickCheck, quickcheck-instances, split
   default-language:   Haskell2010
+  ghc-options:        -Wall
