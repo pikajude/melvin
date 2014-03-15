@@ -65,7 +65,7 @@ respond h text packet =
                       [] -> do
                           n <- use $ acNick . _Just
                           write h . render $ errNeedMoreParams n
-                      (pass:_) -> acPassword ?= pass
+                      (pas:_) -> acPassword ?= pas
         "JOIN" -> case pktArguments packet of
                       [] -> do
                           n <- use $ acNick . _Just

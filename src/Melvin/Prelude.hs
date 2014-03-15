@@ -27,6 +27,7 @@ module Melvin.Prelude (
   runMelvin,
   reading,
   splittingBy,
+  pass,
 
   IO.hGetLine,
   IO.putStrLn,
@@ -80,6 +81,12 @@ show = pack . P.show
 
 (++) :: Monoid m => m -> m -> m
 (++) = (<>)
+
+pass :: (Monad m, Category k) => (o -> PlanT (k o) o m t) -> MachineT m (k o) o
+pass f = repeatedly $ do
+    m <- await
+    _ <- f m
+    yield m
 
 reading :: MonadIO m => Handle -> Int -> MachineT m k IO.ByteString
 reading h n = repeatedly $ yield =<< liftIO (IO.hGetSome h n)

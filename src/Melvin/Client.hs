@@ -29,6 +29,7 @@ loop hndl = bracket
     (\h -> handle handler $ runT_ $
         reading h 512
             ~> splittingBy "\r\n"
+            ~> pass ($logDebug . show)
             ~> auto parse
             ~> handleClient)
 

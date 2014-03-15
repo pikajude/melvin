@@ -60,6 +60,7 @@ loop = do
         (\h -> handle handler $ runT_ $
             reading h 8192
                 ~> splittingBy "\0"
+                ~> pass ($logDebug . show)
                 ~> auto (\x -> (x, parse $ cleanup x))
                 ~> handleServer)
     where cleanup m = if "\n" `B.isSuffixOf` m
