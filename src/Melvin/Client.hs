@@ -33,7 +33,7 @@ loop hndl = bracket
             ~> auto parse
             ~> handleClient)
 
-handleClient :: (Category k, ClientT m) => MachineT m (k Packet) ()
+handleClient :: (Category k, ClientT m) => MachineT m (k Packet) a
 handleClient = construct $ fix $ \f -> do
     p <- await
     continue <- case M.lookup (pktCommand p) responses of

@@ -93,11 +93,10 @@ reading h n = repeatedly $ yield =<< liftIO (IO.hGetSome h n)
 
 splittingBy :: (Monad m, Category k) => IO.ByteString -> MachineT m (k IO.ByteString) IO.ByteString
 splittingBy sep = repeatedly $ go "" where
-    waitNext str =
-        case IO.breakSubstring sep str of
-            (a, b) | IO.null a && IO.null b -> stop
-                   | IO.null b || b == sep -> yield a
-                   | otherwise -> yield a >> go (IO.drop (IO.length sep) b)
+    waitNext str = if IO.null b
+                       then go a
+                       else yield a >> go (IO.drop (IO.length sep) b)
+        where (a, b) = IO.breakSubstring sep str
     go buffer = if sep `IO.isInfixOf` buffer
                     then waitNext buffer
                     else do
