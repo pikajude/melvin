@@ -1,10 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Melvin.Internal.MonadAsync (async, wait) where
+module Melvin.Internal.MonadAsync (MonadAsync(..)) where
 
 import qualified Control.Concurrent.Async as A
-import Control.Monad.Fix
 import Control.Monad.Logger
 import Control.Monad.State
 import Prelude
@@ -21,9 +20,10 @@ instance MonadAsync m => MonadAsync (LoggingT m) where
     async f = LoggingT $ \i -> async (runLoggingT f i)
     wait = lift . wait
 
+instance MonadAsync m => MonadAsync (NoLoggingT m) where
+    async f = NoLoggingT $ async (runNoLoggingT f)
+    wait = lift . wait
+
 instance MonadAsync m => MonadAsync (StateT s m) where
     async m = StateT $ \s -> liftM (flip (,) s) $ async (evalStateT m s)
     wait = lift . wait
-
-instance MonadFix (LoggingT IO) where
-    mfix f = LoggingT $ \i -> mfix $ \a -> runLoggingT (f a) i

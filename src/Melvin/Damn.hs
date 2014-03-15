@@ -27,7 +27,7 @@ import           Network
 import           System.IO hiding            (isEOF, print, putStrLn, utf8)
 import           Text.Damn.Packet hiding     (render)
 
-handler :: SomeException -> ClientT ()
+handler :: ClientT m => SomeException -> m ()
 handler ex | Just (ClientSocketErr e) <- fromException ex = do
     $logWarn $ [st|Server thread hit an exception, but client disconnected (%?), so nothing to do.|] e
     throwM ex
@@ -48,7 +48,7 @@ establishConnection = do
     h <- liftIO $ connectTo "chat.deviantart.com" (PortNumber 3900)
     liftIO $ putMVar smv h
 
-loop :: ClientT ()
+loop :: ClientT m => m ()
 loop = do
     handle handler establishConnection
     mv <- use serverMVar
@@ -66,7 +66,8 @@ loop = do
                           then cleanup (B.init m)
                           else m
 
-handleServer :: Category k => MachineT ClientT (k (ByteString, Either String Packet)) ()
+handleServer :: (Category k, ClientT m)
+             => MachineT m (k (ByteString, Either String Packet)) ()
 handleServer = construct $ fix $ \f -> do
     res <- await
     case res of
@@ -86,11 +87,11 @@ auth h = System.IO.hPutStr h "dAmnClient 0.3\nagent=melvin 0.1\n\0"
 
 
 -- | Big ol' list of callbacks!
-type Callback = Packet -> ClientSettings -> ClientT Bool
+type Callback m = Packet -> ClientSettings -> m Bool
 
-type RecvCallback = Packet -> Callback
+type RecvCallback m = Packet -> Callback m
 
-responses :: M.Map Text Callback
+responses :: ClientT m => M.Map Text (Callback m)
 responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        , ("ping", res_ping)
                        , ("login", res_login)
@@ -103,7 +104,7 @@ responses = M.fromList [ ("dAmnServer", res_dAmnServer)
                        , ("disconnect", res_disconnect)
                        ]
 
-recv_responses :: M.Map Text RecvCallback
+recv_responses :: ClientT m => M.Map Text (RecvCallback m)
 recv_responses = M.fromList [ ("msg", res_recv_msg)
                             , ("action", res_recv_action)
                             , ("join", res_recv_join)
@@ -112,17 +113,17 @@ recv_responses = M.fromList [ ("msg", res_recv_msg)
                             , ("admin", res_recv_admin)
                             ]
 
-res_dAmnServer :: Callback
+res_dAmnServer :: ClientT m => Callback m
 res_dAmnServer _ sta = do
     let (num, (user, tok)) = (clientNumber &&& view username &&& view token) sta
     $logInfo $ [st|Client #%d handshook successfully.|] num
     writeServer $ Damn.login user tok
     return True
 
-res_ping :: Callback
+res_ping :: ClientT m => Callback m
 res_ping _ _ = writeServer Damn.pong >> return True
 
-res_login :: Callback
+res_login :: ClientT m => Callback m
 res_login Packet { pktArgs = args } sta =
     case args ^. ix "e" of
         "ok" -> do
@@ -135,7 +136,7 @@ res_login Packet { pktArgs = args } sta =
             writeClient $ rplNotify (sta ^. username) "Authentication failed!"
             throwM $ AuthenticationFailed x
 
-res_join :: Callback
+res_join :: ClientT m => Callback m
 res_join Packet { pktParameter = p
                 , pktArgs = args } sta = do
     let user = sta ^. username
@@ -148,7 +149,7 @@ res_join Packet { pktParameter = p
         _ -> return ()
     return True
 
-res_part :: Callback
+res_part :: ClientT m => Callback m
 res_part Packet { pktParameter = p
                 , pktArgs = args } sta = do
     let user = sta ^. username
@@ -158,7 +159,7 @@ res_part Packet { pktParameter = p
         _ -> return ()
     return True
 
-res_property :: Callback
+res_property :: ClientT m => Callback m
 res_property Packet { pktParameter = p
                     , pktArgs = args
                     , pktBody = body } sta = do
@@ -224,7 +225,7 @@ res_property Packet { pktParameter = p
                   attrs = map (second T.tail . T.breakOn "=") as
                   g k = lookup k attrs ^. _Just
 
-res_send :: Callback
+res_send :: ClientT m => Callback m
 res_send Packet { pktParameter = p
                 , pktArgs = args
                 } _ = do
@@ -232,7 +233,7 @@ res_send Packet { pktParameter = p
     writeClient $ cmdSendError channel (args ^. ix "e")
     return True
 
-res_disconnect :: Callback
+res_disconnect :: ClientT m => Callback m
 res_disconnect Packet { pktArgs = args } sta =
     case args ^. ix "e" of
         "ok" -> return False
@@ -240,14 +241,14 @@ res_disconnect Packet { pktArgs = args } sta =
             writeClient . rplNotify (sta ^. username) $ "Disconnected: " ++ n
             throwM $ ServerDisconnect n
 
-res_recv :: Callback
+res_recv :: ClientT m => Callback m
 res_recv pk sta = case pk ^. pktSubpacketL of
     Nothing -> True <$ $logError ([st|Received an empty recv packet: %?|] pk)
     Just spk -> case M.lookup (pktCommand spk) recv_responses of
                     Nothing -> True <$ $logError ([st|Unhandled recv packet: %?|] spk)
                     Just c -> c pk spk sta
 
-res_recv_msg :: RecvCallback
+res_recv_msg :: ClientT m => RecvCallback m
 res_recv_msg Packet { pktParameter = p }
              Packet { pktArgs = args
                     , pktBody = b
@@ -258,7 +259,7 @@ res_recv_msg Packet { pktParameter = p }
             writeClient $ cmdPrivmsg (args ^. ix "from") channel line
     return True
 
-res_recv_action :: RecvCallback
+res_recv_action :: ClientT m => RecvCallback m
 res_recv_action Packet { pktParameter = p }
                 Packet { pktArgs = args
                        , pktBody = b
@@ -269,7 +270,7 @@ res_recv_action Packet { pktParameter = p }
             writeClient $ cmdPrivaction (args ^. ix "from") channel line
     return True
 
-res_recv_join :: RecvCallback
+res_recv_join :: ClientT m => RecvCallback m
 res_recv_join Packet { pktParameter = p }
               Packet { pktParameter = u
                      , pktBody = b
@@ -300,7 +301,7 @@ res_recv_join Packet { pktParameter = p }
             where args' = map (second T.tail . T.breakOn "=") (T.splitOn "\n" as)
                   g k = lookup k args' ^. _Just
 
-res_recv_part :: RecvCallback
+res_recv_part :: ClientT m => RecvCallback m
 res_recv_part Packet { pktParameter = p }
               Packet { pktParameter = u
                      , pktArgs = args
@@ -317,7 +318,7 @@ res_recv_part Packet { pktParameter = p }
             writeClient $ cmdDupPart (u ^. _Just) channel (n - 1)
     return True
 
-res_recv_privchg :: RecvCallback
+res_recv_privchg :: ClientT m => RecvCallback m
 res_recv_privchg Packet { pktParameter = p }
                  Packet { pktParameter = u
                         , pktArgs = args
@@ -338,14 +339,14 @@ res_recv_privchg Packet { pktParameter = p }
     writeClient $ cmdPcMove channel (u ^. _Just) (args ^. ix "pc") (args ^. ix "by")
     return True
 
-res_recv_admin :: RecvCallback
+res_recv_admin :: ClientT m => RecvCallback m
 res_recv_admin parent pkt@Packet { pktParameter = cmd } = case cmd of
     Just "create" -> res_recv_admin_update True parent pkt
     Just "update" -> res_recv_admin_update False parent pkt
     Just "remove" -> res_recv_admin_remove parent pkt
     _ -> const $ True <$ $logError ([st|Unhandled admin packet: %?|] pkt)
 
-res_recv_admin_update :: Bool -> RecvCallback
+res_recv_admin_update :: ClientT m => Bool -> RecvCallback m
 res_recv_admin_update b
                       Packet { pktParameter = p }
                       Packet { pktArgs = args }
@@ -358,7 +359,7 @@ res_recv_admin_update b
         (args ^. ix "by")
     return True
 
-res_recv_admin_remove :: RecvCallback
+res_recv_admin_remove :: ClientT m => RecvCallback m
 res_recv_admin_remove Packet { pktParameter = p }
                       Packet { pktArgs = args }
                       _st = do
@@ -369,7 +370,7 @@ res_recv_admin_remove Packet { pktParameter = p }
         (args ^. ix "by")
     return True
 
-res_kicked :: Callback
+res_kicked :: ClientT m => Callback m
 res_kicked Packet { pktParameter = p
                   , pktArgs = args
                   , pktBody = b

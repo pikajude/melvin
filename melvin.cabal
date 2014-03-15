@@ -11,7 +11,7 @@ category:            Network
 build-type:          Simple
 cabal-version:       >=1.10
 
-Flag error
+Flag debug
   Default: False
   Manual: True
 
@@ -41,16 +41,13 @@ executable melvin
                     , tls-extra
                     , transformers
 
-  If impl(ghc>=7.7)
-    build-depends:    lens >= 3.10
-
   hs-source-dirs:     src
   default-language:   Haskell2010
-  default-extensions: NoImplicitPrelude, OverloadedStrings, QuasiQuotes
-  ghc-options:        -Wall -fprof-auto
+  default-extensions: ConstraintKinds, FlexibleContexts, NoImplicitPrelude, OverloadedStrings, QuasiQuotes
+  ghc-options:        -Wall -Werror
 
-  If flag(error)
-    ghc-options:      -Werror -ddump-splices
+  If flag(debug)
+    ghc-options:      -fprof-all -ddump-splices
 
 library
   exposed-modules:    Melvin.Damn.Tablumps
@@ -74,7 +71,7 @@ library
                     , th-printf
                     , transformers
   default-language:   Haskell2010
-  default-extensions: NoImplicitPrelude, OverloadedStrings
+  default-extensions: ConstraintKinds, NoImplicitPrelude, OverloadedStrings
 
 benchmark parser
   type:               exitcode-stdio-1.0

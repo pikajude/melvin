@@ -89,7 +89,7 @@ splittingBy sep = repeatedly $ go "" where
         case IO.breakSubstring sep str of
             (a, b) | IO.null a && IO.null b -> stop
                    | IO.null b || b == sep -> yield a
-                   | otherwise -> yield a >> go (IO.tail b)
+                   | otherwise -> yield a >> go (IO.drop (IO.length sep) b)
     go buffer = if sep `IO.isInfixOf` buffer
                     then waitNext buffer
                     else do
@@ -97,10 +97,10 @@ splittingBy sep = repeatedly $ go "" where
                         waitNext (buffer <> str)
 
 -- redefined. monad-logger's function likes to output an extra newline.
-runStdoutLoggingT :: LoggingT m a -> m a
-runStdoutLoggingT = (`runLoggingT` defaultOutput stdout) where
+runStdoutLoggingT :: LogLevel -> LoggingT m a -> m a
+runStdoutLoggingT baseLevel = (`runLoggingT` defaultOutput stdout) where
     defaultOutput h loc src level msg =
-        S8.hPutStr h ls where
+        when (level >= baseLevel) (S8.hPutStr h ls) where
             ls = fromLogStr $ defaultLogStr loc src level msg
 
 -- | Dealing with the underlying Proxy monad upon which Melvin clients are

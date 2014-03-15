@@ -30,14 +30,14 @@ toChatroom text = case T.uncons text of
 fromChannel :: Text -> Maybe Chatroom
 fromChannel = toChatroom
 
-render :: Chatroom -> ClientT Text
+render :: ClientT m => Chatroom -> m Text
 render (Chatroom s) = return $ "chat:" ++ s
 render (PrivateChat u) = do
     uname <- use username
     let pair = sortBy (comparing T.toLower) [uname, u]
     return $ "pchat:" ++ T.intercalate ":" pair
 
-toChannel :: Text -> ClientT Text
+toChannel :: ClientT m => Text -> m Text
 toChannel text
     | "chat:" `T.isPrefixOf` text = return $ '#' `T.cons` T.drop 5 text
     | otherwise = do
@@ -45,5 +45,5 @@ toChannel text
         let usernames = T.splitOn ":" (T.drop 6 text)
         return . T.cons '&' . $fromJst $ find (/= me) usernames
 
-fromChatroom :: Text -> ClientT Text
+fromChatroom :: ClientT m => Text -> m Text
 fromChatroom = toChannel

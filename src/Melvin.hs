@@ -26,15 +26,16 @@ import System.IO
 
 doAMelvin :: Mopts -> [String] -> IO ()
 doAMelvin Mopts { moptPort = p
+                , moptLogLevel = l
                 , moptMaxClients = _
-                } _args = runStdoutLoggingT . (`evalStateT` error "no state") $ do
+                } _args = runStdoutLoggingT l . (`evalStateT` error "no state") $ do
     $logInfo $ [st|Listening on %?.|] p
     server <- liftIO $ listenOn p
     forM_ [1..] $ \i -> do
         triple <- liftIO $ accept server
         async $ runClientPair i triple
 
-runClientPair :: Integer -> (Handle, String, t) -> ClientT ()
+runClientPair :: ClientT m => Integer -> (Handle, String, t) -> m ()
 runClientPair index (h, host, _) = do
     $logInfo $ [st|Client #%? has connected from %s.|] index host
     liftIO $ hSetEncoding h utf8

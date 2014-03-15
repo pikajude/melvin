@@ -26,24 +26,24 @@ login user token = Packet
     , pktBody = Nothing
     }
 
-join :: Chatroom -> ClientT Packet
+join :: ClientT m => Chatroom -> m Packet
 join r = do
     room <- render r
     return $ Packet "join" (Just room) mempty Nothing
 
-part :: Chatroom -> ClientT Packet
+part :: ClientT m => Chatroom -> m Packet
 part r = do
     room <- render r
     return $ Packet "part" (Just room) mempty Nothing
 
-msg :: Chatroom -> Text -> ClientT Packet
+msg :: ClientT m => Chatroom -> Text -> m Packet
 msg c m = do
     room <- render c
     let subpkt = Packet "msg" (Just "main") mempty (Just . binary $ escape m)
         parent = Packet "send" (Just room) mempty Nothing & pktSubpacketL ?~ subpkt
     return parent
 
-action :: Chatroom -> Text -> ClientT Packet
+action :: ClientT m => Chatroom -> Text -> m Packet
 action c m = do
     room <- render c
     let subpkt = Packet "action" (Just "main") mempty (Just . binary $ escape m)

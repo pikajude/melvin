@@ -16,13 +16,13 @@ import qualified Melvin.Damn.Actions as Damn
 import           Melvin.Prelude
 import           Melvin.Types
 
-handler :: SomeException -> ClientT ()
+handler :: ClientT m => SomeException -> m ()
 handler ex = do
     $logError $ show (ex :: SomeException)
     killServer
     throwM ex
 
-loop :: Handle -> ClientT ()
+loop :: ClientT m => Handle -> m ()
 loop hndl = bracket
     (return hndl)
     (liftIO . hClose)
@@ -32,7 +32,7 @@ loop hndl = bracket
             ~> auto parse
             ~> handleClient)
 
-handleClient :: Category k => MachineT ClientT (k Packet) ()
+handleClient :: (Category k, ClientT m) => MachineT m (k Packet) ()
 handleClient = construct $ fix $ \f -> do
     p <- await
     continue <- case M.lookup (pktCommand p) responses of
@@ -45,9 +45,9 @@ handleClient = construct $ fix $ \f -> do
     when continue f
 
 -- | Big ol' list of callbacks!
-type Callback = Packet -> ClientSettings -> ClientT Bool
+type Callback m = Packet -> ClientSettings -> m Bool
 
-responses :: M.Map Text Callback
+responses :: ClientT m => M.Map Text (Callback m)
 responses = M.fromList [ ("QUIT", res_quit)
                        , ("PING", res_ping)
                        , ("PONG", \_ _ -> return True)
@@ -58,23 +58,23 @@ responses = M.fromList [ ("QUIT", res_quit)
                        , ("PRIVMSG", res_privmsg)
                        ]
 
-res_quit :: Callback
+res_quit :: ClientT m => Callback m
 res_quit _ sta = do
     $logInfo $ [st|Client #%d quit cleanly.|] (clientNumber sta)
     writeServer Damn.disconnect
     return False
 
-res_ping :: Callback
+res_ping :: ClientT m => Callback m
 res_ping Packet { pktArguments = args } _ = do
     writeClient $ cmdPong args
     return True
 
-res_mode :: Callback
+res_mode :: ClientT m => Callback m
 res_mode p _ = do
     $logInfo $ [st|Received mode command, should handle: %?|] p
     return True
 
-res_join :: Callback
+res_join :: ClientT m => Callback m
 res_join Packet { pktArguments = a } sta = do
     case a of
         [] -> writeClient $ errNeedMoreParams (sta ^. username)
@@ -88,7 +88,7 @@ res_join Packet { pktArguments = a } sta = do
                        else modifyState (joinList %~ S.insert c)
     return True
 
-res_part :: Callback
+res_part :: ClientT m => Callback m
 res_part Packet { pktArguments = a } sta = do
     case a of
         [] -> writeClient $ errNeedMoreParams (sta ^. username)
@@ -97,7 +97,7 @@ res_part Packet { pktArguments = a } sta = do
             Just c -> writeServer =<< Damn.part c
     return True
 
-res_privmsg :: Callback
+res_privmsg :: ClientT m => Callback m
 res_privmsg Packet { pktArguments = (room:msg) } sta = do
     case toChatroom room of
         Nothing -> writeClient $ errNoSuchChannel (sta ^. username) room

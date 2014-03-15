@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -fno-warn-orphans -Werror #-}
 
 module Melvin.Internal.Orphans where
 
@@ -18,5 +18,19 @@ instance MonadCatch m => MonadCatch (LoggingT m) where
     uninterruptibleMask a = LoggingT $ \i -> uninterruptibleMask $ \u -> runLoggingT (a $ q u) i where
         q u (LoggingT m) = LoggingT (u . m)
 
+instance MonadCatch m => MonadCatch (NoLoggingT m) where
+    throwM = lift . throwM
+    catch r h = NoLoggingT $ runNoLoggingT r `catch` \e -> runNoLoggingT (h e)
+    mask a = NoLoggingT $ mask $ \u -> runNoLoggingT (a $ q u) where
+        q u (NoLoggingT m) = NoLoggingT (u m)
+    uninterruptibleMask a = NoLoggingT $ uninterruptibleMask $ \u -> runNoLoggingT (a $ q u) where
+        q u (NoLoggingT m) = NoLoggingT (u m)
+
 instance MonadLogger m => MonadLogger (PlanT k b m) where
     monadLoggerLog a b c d = lift (monadLoggerLog a b c d)
+
+instance MonadFix m => MonadFix (LoggingT m) where
+    mfix f = LoggingT $ \i -> mfix $ \a -> runLoggingT (f a) i
+
+instance MonadFix m => MonadFix (NoLoggingT m) where
+    mfix f = NoLoggingT $ mfix $ \a -> runNoLoggingT (f a)
