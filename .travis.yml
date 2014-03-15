@@ -1,6 +1,6 @@
 language: haskell
 before_install:
-  - while true; do if cabal install hlint; then break; fi; done
+  # - while true; do if cabal install hlint; then break; fi; done
   - while true; do if travis/cabal-apt-install $mode; then break; fi; done
 
 install:
