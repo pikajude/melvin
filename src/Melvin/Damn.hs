@@ -5,9 +5,9 @@
 module Melvin.Damn (loop) where
 
 import           Control.Applicative
-import           Control.Arrow hiding        (loop)
-import           Control.Concurrent hiding   (yield)
-import           Control.Exception           (throw)
+import           Control.Arrow hiding             (loop)
+import           Control.Concurrent.Lifted hiding (yield)
+import           Control.Exception                (throw)
 import           Control.Monad
 import           Control.Monad.Catch
 import           Control.Monad.Fix
@@ -18,15 +18,15 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.Read as T
 import           Melvin.Chatrooms
-import           Melvin.Client.Packet hiding (Packet(..), parse, render)
+import           Melvin.Client.Packet hiding      (Packet(..), parse, render)
 import qualified Melvin.Damn.Actions as Damn
 import           Melvin.Damn.Tablumps
 import           Melvin.Exception
 import           Melvin.Prelude
 import           Melvin.Types
 import           Network
-import           System.IO hiding            (isEOF, print, putStrLn, utf8)
-import           Text.Damn.Packet hiding     (render)
+import           System.IO hiding                 (isEOF, print, putStrLn, utf8)
+import           Text.Damn.Packet hiding          (render)
 
 handler :: ClientT m => SomeException -> m ()
 handler ex | Just (ClientSocketErr e) <- fromException ex = do
@@ -42,7 +42,7 @@ handler ex = do
             killClient
     throwM ex
 
--- establishConnection :: (Functor m, MonadIO m, MonadState (ClientSettings m) m) => m ()
+establishConnection :: ClientT m => m ()
 establishConnection = do
     smv <- use serverMVar
     void $ tryTakeMVar smv

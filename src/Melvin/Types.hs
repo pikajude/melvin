@@ -59,6 +59,7 @@ import           Control.Arrow
 import           Control.Concurrent.Lifted
 import           Control.Concurrent.Async.Lifted
 import qualified Control.Exception as E
+import           Control.Monad.Base
 import           Control.Monad.Catch
 import           Control.Monad.Trans.Control
 import qualified Data.ByteString as B
@@ -150,7 +151,8 @@ data ClientSettings = ClientSettings
 makeLenses ''ClientSettings
 
 type ClientT m = (MonadFix m, Functor m, MonadCatch m, MonadBaseControl IO m,
-                  MonadState ClientSettings m, MonadLogger m, MonadIO m)
+                  MonadBase IO m, MonadState ClientSettings m, MonadLogger m,
+                  MonadIO m)
 
 writeClient :: ClientT m => Packet -> m ()
 writeClient text = do

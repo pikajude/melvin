@@ -55,8 +55,8 @@ runClientPair index (h, host, _) = do
             -- 5.
             server <- async $ do
                 mt <- myThreadId
-                sti <- use serverThreadId
-                putMVar sti mt
+                st_ <- use clientThreadId
+                putMVar st_ mt
                 fix $ \f -> do
                     result <- try Damn.loop
                     case result of
@@ -71,8 +71,8 @@ runClientPair index (h, host, _) = do
             -- nobody really cares what happened on dAmn
             client <- async $ do
                 mt <- myThreadId
-                cti <- use clientThreadId
-                putMVar cti mt
+                ct <- use clientThreadId
+                putMVar ct mt
                 try $ Client.loop h
 
             result <- liftM2 (,) (wait client) (wait server)
