@@ -69,7 +69,6 @@ runClientPair index (h, host, _) = do
             --
             -- This isn't retried, unlike dAmn, because if the client exits
             -- nobody really cares what happened on dAmn
-            -- rec client <- async $ do
             client <- async $ do
                 mt <- myThreadId
                 cti <- use clientThreadId
