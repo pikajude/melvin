@@ -15,6 +15,10 @@ Flag debug
   Default: False
   Manual: True
 
+Flag tests
+  Default: False
+  Manual: True
+
 executable melvin
   main-is:            Main.hs
   build-depends:      base >=4.4 && <4.8
@@ -46,35 +50,83 @@ executable melvin
 
   hs-source-dirs:     src
   default-language:   Haskell2010
-  default-extensions: ConstraintKinds, FlexibleContexts, NoImplicitPrelude, OverloadedStrings, QuasiQuotes
+  default-extensions: CPP, ConstraintKinds, FlexibleContexts, NoImplicitPrelude, OverloadedStrings, QuasiQuotes
   ghc-options:        -Wall
 
   If flag(debug)
     ghc-options:      -fprof-all -ddump-splices
 
+  If flag(tests)
+    buildable:        False
+
 library
-  exposed-modules:    Melvin.Damn.Tablumps, Melvin.Prelude
-  other-modules:      Melvin.Exception
+  exposed-modules:    Melvin
+                      Melvin.Damn.Tablumps
+                      Melvin.Options
+                      Melvin.Prelude
+  other-modules:      Melvin.Chatrooms
+                      Melvin.Client
+                      Melvin.Client.Auth
+                      Melvin.Client.Packet
+                      Melvin.Damn
+                      Melvin.Damn.Actions
+                      Melvin.Damn.HTML
+                      Melvin.Exception
+                      Melvin.Internal.Orphans
+                      Melvin.Token
+                      Melvin.Types
+                      Text.Damn.Packet.Internal
+                      Text.Damn.Packet.Parser
   hs-source-dirs:     src
   build-depends:      base
-                    , async
                     , attoparsec
                     , bytestring
                     , containers
+                    , cprng-aes
                     , data-default
                     , deepseq
                     , exceptions
                     , fast-logger
                     , file-location
+                    , HTTP
                     , lens
+                    , lifted-async
+                    , lifted-base
                     , machines
+                    , monad-control
                     , monad-logger
                     , mtl
+                    , network
+                    , options
                     , text
                     , th-printf
+                    , tls
+                    , tls-extra
                     , transformers
   default-language:   Haskell2010
-  default-extensions: ConstraintKinds, NoImplicitPrelude, OverloadedStrings
+  default-extensions: CPP, ConstraintKinds, FlexibleContexts, NoImplicitPrelude, OverloadedStrings, QuasiQuotes
+
+  If flag(tests)
+    cpp-options:      -DTESTS
+
+test-suite io-machines
+  type:               exitcode-stdio-1.0
+  main-is:            io.hs
+  hs-source-dirs:     tests
+  build-depends:      base, bytestring, machines, melvin, QuickCheck, quickcheck-instances, split
+  default-language:   Haskell2010
+  ghc-options:        -Wall
+
+test-suite functional
+  type:               exitcode-stdio-1.0
+  main-is:            melvin-test.hs
+  hs-source-dirs:     tests
+  build-depends:      base, melvin, monad-logger, network
+  default-language:   Haskell2010
+  ghc-options:        -Wall
+
+  If !flag(tests)
+    buildable:        False
 
 benchmark parser
   type:               exitcode-stdio-1.0
@@ -84,11 +136,3 @@ benchmark parser
   build-depends:      base, criterion, melvin, text
   default-extensions: OverloadedStrings
   default-language:   Haskell2010
-
-test-suite io-machines
-  type:               exitcode-stdio-1.0
-  main-is:            io.hs
-  hs-source-dirs:     tests
-  build-depends:      base, bytestring, machines, melvin, QuickCheck, quickcheck-instances, split
-  default-language:   Haskell2010
-  ghc-options:        -Wall

@@ -46,7 +46,11 @@ establishConnection :: ClientT m => m ()
 establishConnection = do
     smv <- use serverMVar
     void $ tryTakeMVar smv
+#ifdef TESTS
+    h <- liftIO $ connectTo "localhost" (PortNumber 3900)
+#else
     h <- liftIO $ connectTo "chat.deviantart.com" (PortNumber 3900)
+#endif
     putMVar smv h
 
 loop :: ClientT m => m ()

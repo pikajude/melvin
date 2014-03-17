@@ -42,6 +42,9 @@ scrapeCookies bs = B.intercalate ";" . map snd
                  . B.lines $ bs
 
 getToken :: T.Text -> T.Text -> IO (Maybe T.Text)
+#ifdef TESTS
+getToken _ _ = return $ Just "authtoken"
+#else
 getToken uname pass = do
     let params = defaultParamsClient {
                      pCiphers = ciphersuite_all
@@ -53,7 +56,7 @@ getToken uname pass = do
     gen <- makeSystem
     ctv <- connectionClient "www.deviantart.com" "443" params gen
     handshake ctv
-    sendData ctv . LB.pack $ "GET /users/login HTTP/1.1\r\nHost: www.deviantart.com\r\n\r\n"
+    sendData ctv $ "GET /users/login HTTP/1.1\r\nHost: www.deviantart.com\r\n\r\n"
     bl <- recvUntil ctv "validate_key"
     bye ctv
     let payload = urlEncodeVars [ ("username", T.unpack uname)
@@ -82,3 +85,4 @@ getToken uname pass = do
            return . (Just . decodeUtf8 . B.take 32 . B.tail
                     . B.dropWhile (/='"') . B.dropWhile (/=',') . snd)
                   . B.breakSubstring "dAmn_Login" $ bq
+#endif
