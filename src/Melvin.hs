@@ -48,23 +48,6 @@ runClientPair index (h, host, _) = do
         Right (uname, token_, rs) -> do
             buildClientSettings index h uname token_ rs
 
-            -- | Run the server thread.
-            --
-            -- Uses Melvin.Exception's isRetryable to check whether errors
-            -- are recoverable. If so, it increments the reconnect time by
-            -- 5.
-            server <- async $ do
-                mt <- myThreadId
-                st_ <- use clientThreadId
-                putMVar st_ mt
-                fix $ \f -> do
-                    result <- try Damn.loop
-                    case result of
-                        r@Right{..} -> return r
-                        Left e -> if isRetryable e
-                            then retryWait += 5 >> f
-                            else return $ Left e
-
             -- | Run the client thread.
             --
             -- This isn't retried, unlike dAmn, because if the client exits
@@ -74,6 +57,23 @@ runClientPair index (h, host, _) = do
                 ct <- use clientThreadId
                 putMVar ct mt
                 try $ Client.loop h
+
+            -- | Run the server thread.
+            --
+            -- Uses Melvin.Exception's isRetryable to check whether errors
+            -- are recoverable. If so, it increments the reconnect time by
+            -- 5.
+            server <- async $ do
+                mt <- myThreadId
+                st_ <- use serverThreadId
+                putMVar st_ mt
+                fix $ \f -> do
+                    result <- try Damn.loop
+                    case result of
+                        r@Right{..} -> return r
+                        Left e -> if isRetryable e
+                            then retryWait += 5 >> f
+                            else return $ Left e
 
             result <- liftM2 (,) (wait client) (wait server)
             case result of
