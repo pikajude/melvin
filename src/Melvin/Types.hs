@@ -57,9 +57,7 @@ module Melvin.Types (
 
 import           Control.Arrow
 import           Control.Concurrent.Lifted
-import           Control.Concurrent.Async.Lifted
 import qualified Control.Exception as E
-import           Control.Monad.Base
 import           Control.Monad.Catch
 import           Control.Monad.Trans.Control
 import qualified Data.ByteString as B
