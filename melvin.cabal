@@ -64,6 +64,7 @@ library
                       Melvin.Damn.Tablumps
                       Melvin.Options
                       Melvin.Prelude
+                      Text.Damn.Packet
   other-modules:      Melvin.Chatrooms
                       Melvin.Client
                       Melvin.Client.Auth
@@ -121,7 +122,7 @@ test-suite functional
   type:               exitcode-stdio-1.0
   main-is:            melvin-test.hs
   hs-source-dirs:     tests
-  build-depends:      base, melvin, monad-logger, network
+  build-depends:      base, async, bytestring, machines, melvin, monad-logger, network
   default-language:   Haskell2010
   ghc-options:        -Wall
 
