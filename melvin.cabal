@@ -30,7 +30,10 @@ executable melvin
                     , file-location
                     , HTTP
                     , lens >= 4.0
+                    , lifted-async
+                    , lifted-base
                     , machines
+                    , monad-control
                     , monad-logger
                     , mtl
                     , network
@@ -44,7 +47,7 @@ executable melvin
   hs-source-dirs:     src
   default-language:   Haskell2010
   default-extensions: ConstraintKinds, FlexibleContexts, NoImplicitPrelude, OverloadedStrings, QuasiQuotes
-  ghc-options:        -Wall -Werror
+  ghc-options:        -Wall
 
   If flag(debug)
     ghc-options:      -fprof-all -ddump-splices

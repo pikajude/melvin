@@ -10,7 +10,8 @@ module Melvin (
   doAMelvin
 ) where
 
-import Control.Concurrent
+import Control.Concurrent.Lifted
+import Control.Concurrent.Async.Lifted
 import Control.Monad
 import Control.Monad.Fix
 import Data.Set
@@ -52,40 +53,43 @@ runClientPair index (h, host, _) = do
             -- Uses Melvin.Exception's isRetryable to check whether errors
             -- are recoverable. If so, it increments the reconnect time by
             -- 5.
-            rec server <- async $ do
-                 sti <- use serverThreadId
-                 liftIO $ putMVar sti server
-                 fix $ \f -> do
-                     result <- try Damn.loop
-                     case result of
-                         r@Right{..} -> return r
-                         Left e -> if isRetryable e
-                             then retryWait += 5 >> f
-                             else return $ Left e
+            server <- async $ do
+                mt <- myThreadId
+                sti <- use serverThreadId
+                putMVar sti mt
+                fix $ \f -> do
+                    result <- try Damn.loop
+                    case result of
+                        r@Right{..} -> return r
+                        Left e -> if isRetryable e
+                            then retryWait += 5 >> f
+                            else return $ Left e
 
             -- | Run the client thread.
             --
             -- This isn't retried, unlike dAmn, because if the client exits
             -- nobody really cares what happened on dAmn
-            rec client <- async $ do
-                 cti <- use clientThreadId
-                 liftIO $ putMVar cti client
-                 try $ Client.loop h
+            -- rec client <- async $ do
+            client <- async $ do
+                mt <- myThreadId
+                cti <- use clientThreadId
+                putMVar cti mt
+                try $ Client.loop h
 
             result <- liftM2 (,) (wait client) (wait server)
             case result of
                 (Right{..}, Right{..}) -> $logInfo $ [st|Client #%d exited cleanly|] index
-                (Left m, _) -> $logWarn $ [st|Client #%d encountered an error: %?|] index m
+                (Left m, _) -> $logWarn $ [st|Client #%d encountered an error: %?|] index (m :: SomeException)
                 (_, Left m) -> $logWarn $ [st|Client #%d's server encountered an error: %?|] index m
 
-buildClientSettings :: (MonadIO m, MonadState ClientSettings m) => Integer -> Handle -> Text -> Text -> Set Chatroom -> m ()
+buildClientSettings :: ClientT m => Integer -> Handle -> Text -> Text -> Set Chatroom -> m ()
 buildClientSettings i h u t j = do
-    sc <- liftIO $ newMVar ()
-    cc <- liftIO $ newMVar ()
-    mv1 <- liftIO $ newEmptyMVar
-    mv2 <- liftIO $ newEmptyMVar
-    mv3 <- liftIO $ newEmptyMVar
-    csm <- liftIO $ newMVar ClientState
+    sc <- newMVar ()
+    cc <- newMVar ()
+    mv1 <- newEmptyMVar
+    mv2 <- newEmptyMVar
+    mv3 <- newEmptyMVar
+    csm <- newMVar ClientState
              { _loggedIn    = False
              , _joinList    = j
              , _joining     = mempty

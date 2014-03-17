@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Melvin.Damn (loop) where
@@ -41,19 +42,19 @@ handler ex = do
             killClient
     throwM ex
 
-establishConnection :: (Functor m, MonadIO m, MonadState ClientSettings m) => m ()
+-- establishConnection :: (Functor m, MonadIO m, MonadState (ClientSettings m) m) => m ()
 establishConnection = do
     smv <- use serverMVar
-    void $ liftIO $ tryTakeMVar smv
+    void $ tryTakeMVar smv
     h <- liftIO $ connectTo "chat.deviantart.com" (PortNumber 3900)
-    liftIO $ putMVar smv h
+    putMVar smv h
 
 loop :: ClientT m => m ()
 loop = do
     handle handler establishConnection
     mv <- use serverMVar
     bracket
-        (do hndl <- liftIO $ readMVar mv
+        (do hndl <- readMVar mv
             liftIO $ auth hndl
             return hndl)
         (liftIO . hClose)

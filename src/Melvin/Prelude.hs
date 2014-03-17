@@ -59,7 +59,6 @@ import           Data.Text.Encoding              (decodeUtf8, encodeUtf8)
 import           FileLocation as X
 import           Melvin.Exception
 import           Melvin.Internal.Orphans as X    ()
-import           Melvin.Internal.MonadAsync as X
 import           Prelude as X hiding             ((++), putStrLn, print, show, lines)
 import qualified Prelude as P
 import           System.IO as X                  (Handle, hClose, hFlush, hIsClosed, hIsEOF)

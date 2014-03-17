@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -51,21 +52,21 @@ module Melvin.Types (
   modifyState,
   putState,
 
-  ClientT
+  ClientT, StM
 ) where
 
 import           Control.Arrow
-import           Control.Concurrent
-import           Control.Concurrent.Async
+import           Control.Concurrent.Lifted
+import           Control.Concurrent.Async.Lifted
 import qualified Control.Exception as E
 import           Control.Monad.Catch
+import           Control.Monad.Trans.Control
 import qualified Data.ByteString as B
 import           Data.Map                 (Map)
 import           Data.Set
 import           Data.Text
 import           Melvin.Client.Packet
 import           Melvin.Exception
-import           Melvin.Internal.MonadAsync
 import           Melvin.Prelude hiding    (cons)
 import qualified Text.Damn.Packet as D
 
@@ -140,23 +141,23 @@ data ClientSettings = ClientSettings
         , _username             :: Text
         , _token                :: Text
         , _serverMVar           :: MVar Handle
-        , _clientThreadId       :: MVar (Async (Either SomeException ()))
-        , _serverThreadId       :: MVar (Async (Either SomeException ()))
+        , _clientThreadId       :: MVar ThreadId
+        , _serverThreadId       :: MVar ThreadId
         , _retryWait            :: Integer
         , _clientState          :: MVar ClientState
         }
 
 makeLenses ''ClientSettings
 
-type ClientT m = (MonadFix m, MonadAsync m, Functor m, MonadCatch m,
+type ClientT m = (MonadFix m, Functor m, MonadCatch m, MonadBaseControl IO m,
                   MonadState ClientSettings m, MonadLogger m, MonadIO m)
 
 writeClient :: ClientT m => Packet -> m ()
 writeClient text = do
     (mv, h) <- gets (view clientWriteLock &&& view clientHandle)
     bracket_
-        (liftIO $ takeMVar mv)
-        (liftIO $ putMVar mv ())
+        (takeMVar mv)
+        (putMVar mv ())
         ((liftIO (hPutStr h r) >> $logDebug (show r)) `catch` fallback)
     where fallback e = do
             $logError $ "(write failed) " ++ show r
@@ -167,12 +168,12 @@ writeServer :: ClientT m => D.Packet -> m ()
 writeServer text = do
     (mv, h) <- gets (view serverWriteLock &&& view serverMVar)
     bracket
-        (liftIO $ takeMVar mv >> tryTakeMVar h)
-        (\_ -> liftIO $ putMVar mv ())
+        (takeMVar mv >> tryTakeMVar h)
+        (\_ -> putMVar mv ())
         (\mHndl -> case mHndl of
             Nothing -> E.throw ServerNotConnected
             Just hndl -> (do
-                liftIO $ putMVar h hndl
+                putMVar h hndl
                 liftIO $ B.hPutStr hndl (D.render text ++ "\n\0")
                 $logDebug (show text)) `catch` fallback)
     where fallback e = do
@@ -182,37 +183,37 @@ writeServer text = do
 killClient :: ClientT m => m ()
 killClient = do
     ct <- use clientThreadId
-    tid <- liftIO $ tryTakeMVar ct
+    tid <- tryTakeMVar ct
     case tid of
         Nothing -> $logWarn "Client thread is already dead."
-        Just t -> liftIO $ cancel t
+        Just t -> killThread t
 
 killServer :: ClientT m => m ()
 killServer = do
     ct <- use serverThreadId
-    tid <- liftIO $ tryTakeMVar ct
+    tid <- tryTakeMVar ct
     case tid of
         Nothing -> $logWarn "Server thread is already dead."
-        Just t -> liftIO $ cancel t
+        Just t -> killThread t
 
 modifyState :: ClientT m => (ClientState -> ClientState) -> m ()
 modifyState f = do
     cs <- use clientState
-    liftIO $ modifyMVar_ cs (return . f)
+    modifyMVar_ cs (return . f)
 
 getState :: ClientT m => m ClientState
 getState = do
     cs <- use clientState
-    liftIO $ readMVar cs
+    readMVar cs
 
 getsState :: ClientT m => (ClientState -> a) -> m a
 getsState f = do
     cs <- use clientState
-    sta <- liftIO $ readMVar cs
+    sta <- readMVar cs
     return $ f sta
 
 putState :: ClientT m => ClientState -> m ()
 putState v = do
     cs <- use clientState
-    _ <- liftIO $ tryTakeMVar cs
-    liftIO $ putMVar cs v
+    _ <- tryTakeMVar cs
+    putMVar cs v
