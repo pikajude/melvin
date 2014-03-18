@@ -56,7 +56,7 @@ getToken uname pass = do
     gen <- makeSystem
     ctv <- connectionClient "www.deviantart.com" "443" params gen
     handshake ctv
-    sendData ctv $ "GET /users/login HTTP/1.1\r\nHost: www.deviantart.com\r\n\r\n"
+    sendData ctv "GET /users/login HTTP/1.1\r\nHost: www.deviantart.com\r\n\r\n"
     bl <- recvUntil ctv "validate_key"
     bye ctv
     let payload = urlEncodeVars [ ("username", T.unpack uname)
