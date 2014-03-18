@@ -21,7 +21,8 @@ import Melvin.Client.Auth
 import Melvin.Exception
 import Melvin.Prelude hiding    (index, set, utf8)
 import Melvin.Options
-import Melvin.Types
+import Melvin.Types (Chatroom, ClientSettings(..), ClientState(..), ClientT)
+import qualified Melvin.Types as M
 import Network
 import System.IO
 
@@ -60,47 +61,52 @@ runClientPair index (h, host, _) = do
 runClient :: ClientT m => Handle -> m (Either SomeException ())
 runClient h = do
     mt <- myThreadId
-    ct <- use clientThreadId
+    ct <- use M.clientThreadId
     putMVar ct mt
     try $ Client.loop h
 
 runServer :: ClientT m => m (Either SomeException ())
 runServer = do
     mt <- myThreadId
-    st_ <- use serverThreadId
+    st_ <- use M.serverThreadId
     putMVar st_ mt
     fix $ \f -> do
         result <- try Damn.loop
         case result of
             r@Right{..} -> return r
             Left e -> if isRetryable e
-                then retryWait += 5 >> f
+                then M.retryWait += 5 >> f
                 else return $ Left e
 
 buildClientSettings :: ClientT m => Integer -> Handle -> Text -> Text -> Set Chatroom -> m ClientSettings
-buildClientSettings i h u t j = do
-    sc <- newMVar ()
-    cc <- newMVar ()
-    mv1 <- newEmptyMVar
-    mv2 <- newEmptyMVar
-    mv3 <- newEmptyMVar
-    csm <- newMVar ClientState
+buildClientSettings clientNum clientHandle username token joinList = do
+    -- mutexes
+    serverWriteLock <- newMVar ()
+    clientWriteLock <- newMVar ()
+
+    -- holds the Handle connected to dAmn
+    serverMVar <- newEmptyMVar
+
+    serverThreadId <- newEmptyMVar
+    clientThreadId <- newEmptyMVar
+
+    clientState <- newMVar ClientState
              { _loggedIn    = False
-             , _joinList    = j
+             , _joinList    = joinList
              , _joining     = mempty
              , _privclasses = mempty
              , _users       = mempty
              }
     return ClientSettings
-        { clientNumber     = i
-        , _clientHandle    = h
-        , _serverWriteLock = sc
-        , _clientWriteLock = cc
-        , _username        = u
-        , _token           = t
-        , _serverMVar      = mv1
-        , _serverThreadId  = mv2
-        , _clientThreadId  = mv3
+        { clientNumber     = clientNum
+        , _clientHandle    = clientHandle
+        , _serverWriteLock = serverWriteLock
+        , _clientWriteLock = clientWriteLock
+        , _username        = username
+        , _token           = token
+        , _serverMVar      = serverMVar
+        , _serverThreadId  = serverThreadId
+        , _clientThreadId  = clientThreadId
         , _retryWait       = 5
-        , _clientState     = csm
+        , _clientState     = clientState
         }
