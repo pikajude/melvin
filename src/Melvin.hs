@@ -46,42 +46,38 @@ runClientPair index (h, host, _) = do
             $logWarn $ [st|Client #%? couldn't authenticate: %?.|] index e
             liftIO $ hClose h
         Right (uname, token_, rs) -> do
-            buildClientSettings index h uname token_ rs
+            put =<< buildClientSettings index h uname token_ rs
 
-            -- | Run the client thread.
-            --
-            -- This isn't retried, unlike dAmn, because if the client exits
-            -- nobody really cares what happened on dAmn
-            client <- async $ do
-                mt <- myThreadId
-                ct <- use clientThreadId
-                putMVar ct mt
-                try $ Client.loop h
+            result <- concurrently (runClient h) runServer
 
-            -- | Run the server thread.
-            --
-            -- Uses Melvin.Exception's isRetryable to check whether errors
-            -- are recoverable. If so, it increments the reconnect time by
-            -- 5.
-            server <- async $ do
-                mt <- myThreadId
-                st_ <- use serverThreadId
-                putMVar st_ mt
-                fix $ \f -> do
-                    result <- try Damn.loop
-                    case result of
-                        r@Right{..} -> return r
-                        Left e -> if isRetryable e
-                            then retryWait += 5 >> f
-                            else return $ Left e
-
-            result <- liftM2 (,) (wait client) (wait server)
             case result of
                 (Right{..}, Right{..}) -> $logInfo $ [st|Client #%d exited cleanly|] index
-                (Left m, _) -> $logWarn $ [st|Client #%d encountered an error: %?|] index (m :: SomeException)
+                (Left m, _) -> $logWarn $ [st|Client #%d encountered an error: %?|] index m
                 (_, Left m) -> $logWarn $ [st|Client #%d's server encountered an error: %?|] index m
 
-buildClientSettings :: ClientT m => Integer -> Handle -> Text -> Text -> Set Chatroom -> m ()
+-- This isn't retried because nobody cares what happened on dAmn if the
+-- client quits.
+runClient :: ClientT m => Handle -> m (Either SomeException ())
+runClient h = do
+    mt <- myThreadId
+    ct <- use clientThreadId
+    putMVar ct mt
+    try $ Client.loop h
+
+runServer :: ClientT m => m (Either SomeException ())
+runServer = do
+    mt <- myThreadId
+    st_ <- use serverThreadId
+    putMVar st_ mt
+    fix $ \f -> do
+        result <- try Damn.loop
+        case result of
+            r@Right{..} -> return r
+            Left e -> if isRetryable e
+                then retryWait += 5 >> f
+                else return $ Left e
+
+buildClientSettings :: ClientT m => Integer -> Handle -> Text -> Text -> Set Chatroom -> m ClientSettings
 buildClientSettings i h u t j = do
     sc <- newMVar ()
     cc <- newMVar ()
@@ -95,7 +91,7 @@ buildClientSettings i h u t j = do
              , _privclasses = mempty
              , _users       = mempty
              }
-    put ClientSettings
+    return ClientSettings
         { clientNumber     = i
         , _clientHandle    = h
         , _serverWriteLock = sc
