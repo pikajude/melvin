@@ -146,8 +146,8 @@ data ClientSettings = ClientSettings
 
 makeLenses ''ClientSettings
 
-type ClientT m = (MonadFix m, Functor m, MonadCatch m, MonadBaseControl IO m,
-                  MonadState ClientSettings m, MonadLogger m, MonadIO m)
+type ClientT m = (Functor m, MonadCatch m, MonadIO m, MonadBaseControl IO m,
+                  MonadState ClientSettings m, MonadLogger m)
 
 writeClient :: ClientT m => Packet -> m ()
 writeClient text = do

@@ -28,9 +28,3 @@ instance MonadCatch m => MonadCatch (NoLoggingT m) where
 
 instance MonadLogger m => MonadLogger (PlanT k b m) where
     monadLoggerLog a b c d = lift (monadLoggerLog a b c d)
-
-instance MonadFix m => MonadFix (LoggingT m) where
-    mfix f = LoggingT $ \i -> mfix $ \a -> runLoggingT (f a) i
-
-instance MonadFix m => MonadFix (NoLoggingT m) where
-    mfix f = NoLoggingT $ mfix $ \a -> runNoLoggingT (f a)
