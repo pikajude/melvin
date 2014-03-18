@@ -75,7 +75,7 @@ runServer = do
         case result of
             r@Right{..} -> return r
             Left e -> if isRetryable e
-                then M.retryWait += 5 >> f
+                then f
                 else return $ Left e
 
 buildClientSettings :: ClientT m => Integer -> Handle -> Text -> Text -> Set Chatroom -> m ClientSettings
@@ -107,6 +107,5 @@ buildClientSettings clientNum clientHandle username token joinList = do
         , _serverMVar      = serverMVar
         , _serverThreadId  = serverThreadId
         , _clientThreadId  = clientThreadId
-        , _retryWait       = 5
         , _clientState     = clientState
         }

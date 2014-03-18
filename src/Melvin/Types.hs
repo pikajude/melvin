@@ -33,7 +33,6 @@ module Melvin.Types (
   serverMVar,
   clientThreadId,
   serverThreadId,
-  retryWait,
 
   writeClient,
   writeServer,
@@ -142,7 +141,6 @@ data ClientSettings = ClientSettings
         , _serverMVar           :: MVar Handle
         , _clientThreadId       :: MVar ThreadId
         , _serverThreadId       :: MVar ThreadId
-        , _retryWait            :: Integer
         , _clientState          :: MVar ClientState
         }
 
