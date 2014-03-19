@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Melvin.Client.Packet (
   Packet(..),
   parse,

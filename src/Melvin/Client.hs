@@ -1,6 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE TemplateHaskell #-}
-
 module Melvin.Client (loop) where
 
 import           Control.Monad

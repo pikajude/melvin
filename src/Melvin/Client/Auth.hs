@@ -1,8 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
-
 module Melvin.Client.Auth (
     authenticate
 ) where
@@ -87,7 +82,7 @@ getAuthInfo h = fix $ \f -> do
         AuthClient _ (Just u) (Just p) js -> do
             uname <- use $ acUsername . _Just
             write h . render $ rplNotify "Fetching token..."
-            liftIO $ fmap (uname, , js) <$> getToken u p
+            liftIO $ fmap (\x -> (uname, x, js)) <$> getToken u p
         _ -> f
 
 authFailure :: LogIO m => Handle -> AuthState m ()

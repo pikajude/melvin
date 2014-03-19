@@ -1,11 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
-
 module Melvin (
   doAMelvin
 ) where
@@ -52,7 +44,7 @@ runClientPair index (h, host, _) = do
             result <- concurrently (runClient h) runServer
 
             case result of
-                (Right{..}, Right{..}) -> $logInfo $ [st|Client #%d exited cleanly|] index
+                (Right{}, Right{}) -> $logInfo $ [st|Client #%d exited cleanly|] index
                 (Left m, _) -> $logWarn $ [st|Client #%d encountered an error: %?|] index m
                 (_, Left m) -> $logWarn $ [st|Client #%d's server encountered an error: %?|] index m
 
@@ -73,7 +65,7 @@ runServer = do
     fix $ \f -> do
         result <- try Damn.loop
         case result of
-            r@Right{..} -> return r
+            r@Right{} -> return r
             Left e -> if isRetryable e
                 then f
                 else return $ Left e

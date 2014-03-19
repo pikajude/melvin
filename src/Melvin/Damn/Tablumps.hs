@@ -1,8 +1,4 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module Melvin.Damn.Tablumps (
@@ -161,7 +157,7 @@ render (NamedEntity s) = return $ namedEntities M.! s
 
 render (Entity n) = return $ T.singleton (chr n)
 
-render l@(Lump{..}) = $err' $ "unknown tablump " ++ P.show l
+render l@(Lump{}) = $err' $ "unknown tablump " ++ P.show l
 render (SimpleLump s) = $err' $ "unknown simple tablump " ++ T.unpack s
 
 isChromacity :: Text -> Bool

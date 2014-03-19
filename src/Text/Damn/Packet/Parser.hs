@@ -1,7 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-
 -- | Parsing Packets.
 module Text.Damn.Packet.Parser (
   Packet(..),

@@ -50,7 +50,14 @@ executable melvin
 
   hs-source-dirs:     src
   default-language:   Haskell2010
-  default-extensions: CPP, ConstraintKinds, FlexibleContexts, NoImplicitPrelude, OverloadedStrings, QuasiQuotes
+  default-extensions: ConstraintKinds
+                      CPP
+                      FlexibleContexts
+                      NoImplicitPrelude
+                      OverloadedStrings
+                      QuasiQuotes
+                      ScopedTypeVariables
+                      TemplateHaskell
   ghc-options:        -Wall
 
   If flag(debug)
@@ -105,7 +112,14 @@ library
                     , tls-extra
                     , transformers
   default-language:   Haskell2010
-  default-extensions: CPP, ConstraintKinds, FlexibleContexts, NoImplicitPrelude, OverloadedStrings, QuasiQuotes
+  default-extensions: ConstraintKinds
+                      CPP
+                      FlexibleContexts
+                      NoImplicitPrelude
+                      OverloadedStrings
+                      QuasiQuotes
+                      ScopedTypeVariables
+                      TemplateHaskell
 
   If flag(tests)
     cpp-options:      -DTESTS

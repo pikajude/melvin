@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Melvin.Chatrooms (
   fromChannel,
   toChatroom,

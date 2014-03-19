@@ -1,6 +1,4 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE RankNTypes #-}
 
 -- | Internal functions for Packets.
 module Text.Damn.Packet.Internal (

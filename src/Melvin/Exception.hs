@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Melvin.Exception (
   MelvinException(..),
@@ -44,8 +43,8 @@ instance Show MelvinException where
     show (ServerSocketErr e) = "lost connection to server: " <> Prelude.show e
     show ServerNotConnected = "tried to write to server, but handle not connected"
     show (ServerDisconnect e) = "lost connection to server: " <> unpack e
-    show ServerNoParse{..} = "received a bad packet from the server"
-    show ClientNoParse{..} = "received a bad packet from the client"
+    show ServerNoParse{} = "received a bad packet from the server"
+    show ClientNoParse{} = "received a bad packet from the client"
     show (BadTablumps e _) = "failed parsing tablumps: " <> e
 
 isRetryable :: SomeException -> Bool
