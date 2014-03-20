@@ -28,6 +28,7 @@ module Melvin.Client.Packet (
   rplNameReply,
 
   errNoNicknameGiven,
+  errCantNick,
   errNeedMoreParams,
   errPasswordMismatch,
   errNoSuchChannel,
@@ -171,6 +172,7 @@ rplNameReply channel user users =
 -- | Error response packets
 errNoNicknameGiven, errNeedMoreParams, errPasswordMismatch :: Text -> Packet
 errNoNicknameGiven  n = Packet hostname "431" [n, "No nickname given"]
+errCantNick         n = Packet hostname "432" [n, "You can't change your nick on dAmn!"]
 errNeedMoreParams   n = Packet hostname "461" [n, "Need more parameters"]
 errPasswordMismatch n = Packet hostname "464" [n, "Authentication failed. Try again."]
 

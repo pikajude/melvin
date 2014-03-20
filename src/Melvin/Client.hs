@@ -51,6 +51,7 @@ responses = M.fromList [ ("QUIT", res_quit)
                        , ("WHO", \_ _ -> return True)
                        , ("PONG", \_ _ -> return True)
                        , ("USER", \_ _ -> return True)
+                       , ("NICK", res_nick)
                        , ("MODE", res_mode)
                        , ("JOIN", res_join)
                        , ("PART", res_part)
@@ -66,6 +67,11 @@ res_quit _ sta = do
 res_ping :: ClientT m => Callback m
 res_ping Packet { pktArguments = args } _ = do
     writeClient $ cmdPong args
+    return True
+
+res_nick :: ClientT m => Callback m
+res_nick Packet { pktArguments = _ } sta = do
+    writeClient $ errCantNick (sta ^. username)
     return True
 
 res_mode :: ClientT m => Callback m
