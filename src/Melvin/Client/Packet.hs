@@ -170,7 +170,7 @@ rplNameReply channel user users =
         Packet hostname "353" [user, "=", channel, T.intercalate " " users]
 
 -- | Error response packets
-errNoNicknameGiven, errNeedMoreParams, errPasswordMismatch :: Text -> Packet
+errNoNicknameGiven, errCantNick, errNeedMoreParams, errPasswordMismatch :: Text -> Packet
 errNoNicknameGiven  n = Packet hostname "431" [n, "No nickname given"]
 errCantNick         n = Packet hostname "432" [n, "You can't change your nick on dAmn!"]
 errNeedMoreParams   n = Packet hostname "461" [n, "Need more parameters"]

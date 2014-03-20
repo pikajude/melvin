@@ -47,16 +47,17 @@ type Callback m = Packet -> ClientSettings -> m Bool
 
 responses :: ClientT m => M.Map Text (Callback m)
 responses = M.fromList [ ("QUIT", res_quit)
-                       , ("PING", res_ping)
-                       , ("WHO", \_ _ -> return True)
-                       , ("PONG", \_ _ -> return True)
-                       , ("USER", \_ _ -> return True)
-                       , ("NICK", res_nick)
+                       , ("PING", ignore)
+                       , ("WHO",  ignore)
+                       , ("PONG", ignore)
+                       , ("USER", ignore)
+                       , ("NICK", ignore)
                        , ("MODE", res_mode)
                        , ("JOIN", res_join)
                        , ("PART", res_part)
                        , ("PRIVMSG", res_privmsg)
-                       ]
+                       ] where
+    ignore _ _ = return True
 
 res_quit :: ClientT m => Callback m
 res_quit _ sta = do
@@ -67,11 +68,6 @@ res_quit _ sta = do
 res_ping :: ClientT m => Callback m
 res_ping Packet { pktArguments = args } _ = do
     writeClient $ cmdPong args
-    return True
-
-res_nick :: ClientT m => Callback m
-res_nick Packet { pktArguments = _ } sta = do
-    writeClient $ errCantNick (sta ^. username)
     return True
 
 res_mode :: ClientT m => Callback m
