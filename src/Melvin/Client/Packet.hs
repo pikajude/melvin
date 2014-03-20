@@ -95,7 +95,7 @@ render (Packet pr c args) = binary (maybe "" ((++" ") . T.cons ':') pr)
 
 -- | Packets that aren't reply packets
 cmdPong :: [Text] -> Packet
-cmdPong = Packet Nothing "PONG"
+cmdPong = Packet hostname "PONG"
 
 cmdJoin, cmdSendError :: Text -> Text -> Packet
 cmdJoin n channel = Packet (hostOf n) "JOIN" [":" <> channel]
