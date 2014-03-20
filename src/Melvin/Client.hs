@@ -48,6 +48,7 @@ type Callback m = Packet -> ClientSettings -> m Bool
 responses :: ClientT m => M.Map Text (Callback m)
 responses = M.fromList [ ("QUIT", res_quit)
                        , ("PING", res_ping)
+                       , ("WHO", \_ _ -> return True)
                        , ("PONG", \_ _ -> return True)
                        , ("USER", \_ _ -> return True)
                        , ("MODE", res_mode)
