@@ -17,7 +17,6 @@ module Melvin.Prelude (
   Category,
 
   -- IO
-  runMelvin,
   reading,
   endingBy,
   pass,
@@ -101,13 +100,3 @@ runStdoutLoggingT baseLevel = (`runLoggingT` defaultOutput stdout) where
     defaultOutput h loc src level msg =
         when (level >= baseLevel) (S8.hPutStr h ls) where
             ls = fromLogStr $ defaultLogStr loc src level msg
-
--- | Dealing with the underlying Proxy monad upon which Melvin clients are
--- based. Despite the type signature, this function only handles IO
--- exceptions and Melvin-internal exceptions.
-runMelvin :: (MonadIO m, MonadCatch m) => s -> StateT s m r -> m (Either SomeException r)
-runMelvin st_ m = catches
-    (liftM Right $ evalStateT m st_)
-    [ Handler $ \(e :: IOException) -> return (Left $ toException e)
-    , Handler $ \(e :: MelvinException) -> return (Left $ toException e)
-    ]
