@@ -123,6 +123,8 @@ library
 
   If flag(tests)
     cpp-options:      -DTESTS
+  Else
+    buildable:        False
 
 test-suite io-machines
   type:               exitcode-stdio-1.0
@@ -140,8 +142,8 @@ test-suite functional
   default-language:   Haskell2010
   ghc-options:        -Wall
 
-  If !flag(tests)
-    buildable:        False
+  -- If !flag(tests)
+  buildable:        False
 
 benchmark parser
   type:               exitcode-stdio-1.0

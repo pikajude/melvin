@@ -35,7 +35,6 @@ module Melvin.Prelude (
 
 import           Control.Applicative
 import           Control.Category                (Category)
-import           Control.Exception               (IOException)
 import           Control.Exception as X          (AsyncException(..))
 import           Control.Lens as X hiding        (Level)
 import           Control.Monad.Catch as X hiding (bracket, bracket_)
@@ -49,7 +48,6 @@ import           Data.Monoid as X
 import           Data.Text                       (Text, pack)
 import           Data.Text.Encoding              (decodeUtf8, encodeUtf8)
 import           FileLocation as X
-import           Melvin.Exception
 import           Melvin.Internal.Orphans as X    ()
 import           Prelude as X hiding             ((++), putStrLn, print, show, lines)
 import qualified Prelude as P
