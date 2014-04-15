@@ -33,7 +33,7 @@ executable melvin
                     , fast-logger
                     , file-location
                     , HTTP
-                    , lens >= 4.0
+                    , lens >= 4.1
                     , lifted-async
                     , lifted-base
                     , machines
@@ -93,10 +93,10 @@ library
                     , cprng-aes
                     , data-default
                     , deepseq
-                    , exceptions
+                    , exceptions >= 0.5
                     , fast-logger
                     , file-location
-                    , HTTP
+                    , HTTP >= 4000.2.12
                     , lens
                     , lifted-async
                     , lifted-base
