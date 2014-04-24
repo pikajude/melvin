@@ -6,7 +6,6 @@ before_install:
  - travis_retry sudo apt-get update
  - travis_retry sudo apt-get install cabal-install-1.18 ghc-$GHCVER
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/1.18/bin:$PATH
- - export MODE="--enable-tests -ftests --enable-library-coverage --enable-benchmarks"
 
  - |
    if [ $GHCVER = "head" ] || [ ${GHCVER%.*} = "7.8" ]; then
@@ -18,10 +17,10 @@ before_install:
 
 install:
  - cabal update
- - cabal install --only-dependencies $MODE
+ - cabal install --only-dependencies -ftests --enable-tests --enable-benchmarks
 
 script:
- - cabal configure $MODE -v2
+ - cabal configure -ftests --enable-tests --enable-benchmarks --enable-library-coverage -v2
  - cabal build
  - run-cabal-test
  - cabal check
