@@ -18,6 +18,7 @@ before_install:
 install:
  - cabal update
  - cabal install --only-dependencies -ftests --enable-tests --enable-benchmarks
+ - cabal install hpc-coveralls
 
 script:
  - cabal configure -ftests --enable-tests --enable-benchmarks --enable-library-coverage -v2
