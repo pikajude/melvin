@@ -1,14 +1,17 @@
 language: haskell
 before_install:
-  # - while true; do if cabal install hlint; then break; fi; done
-  - while true; do if travis/cabal-apt-install $mode; then break; fi; done
+  - cabal install hpc-coveralls
 
 install:
-  - cabal configure $mode
-  - cabal build
+  - cabal install --only-dependencies $mode
 
 script:
-  - cabal test --show-details=always
+  - cabal configure $mode
+  - run-cabal-test
+
+after_script:
+  - hpc-coveralls functional
+  - hpc-coveralls io-machines
 
 env:
-  - mode="--enable-tests -ftests"
+  - mode="--enable-tests -ftests --enable-library-coverage"

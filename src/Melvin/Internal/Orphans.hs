@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fno-warn-orphans -Werror #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Melvin.Internal.Orphans where
 

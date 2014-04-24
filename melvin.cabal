@@ -123,6 +123,7 @@ library
 
   If flag(tests)
     cpp-options:      -DTESTS
+    ghc-options:      -Werror
   Else
     buildable:        False
 
