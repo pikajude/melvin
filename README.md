@@ -1,6 +1,6 @@
 melvin
 ======
-[![Build status](https://secure.travis-ci.org/joelteon/melvin.png)](http://travis-ci.org/joelteon/melvin)
+[![Build status](https://travis-ci.org/joelteon/melvin.svg)](https://travis-ci.org/joelteon/melvin)
 
 What kevin should have been, rewritten from the bottom up. Uses machines. I hope it catches on.
 
